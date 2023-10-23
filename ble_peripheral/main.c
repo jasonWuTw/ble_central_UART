@@ -82,7 +82,7 @@
 
 #define APP_BLE_CONN_CFG_TAG            1                                           /**< A tag identifying the SoftDevice BLE configuration. */
 
-#define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Matsutek"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_BLE_OBSERVER_PRIO           3                                           /**< Application's BLE observer priority. You shouldn't need to modify this value. */
@@ -530,11 +530,11 @@ void uart_event_handle(app_uart_evt_t * p_event)
             UNUSED_VARIABLE(app_uart_get(&data_array[index]));
             index++;
 
-            if ((data_array[index - 1] == '\n') ||
+            /*if ((data_array[index - 1] == '\n') ||
                 (data_array[index - 1] == '\r') ||
                 (index >= m_ble_nus_max_data_len))
-            {
-                if (index > 1)
+            {*/
+                if (index > 0)
                 {
                     NRF_LOG_DEBUG("Ready to send data over BLE NUS");
                     NRF_LOG_HEXDUMP_DEBUG(data_array, index);
@@ -553,7 +553,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
                 }
 
                 index = 0;
-            }
+            //}
             break;
 
         case APP_UART_COMMUNICATION_ERROR:
@@ -579,14 +579,14 @@ static void uart_init(void)
     uint32_t                     err_code;
     app_uart_comm_params_t const comm_params =
     {
-        .rx_pin_no    = RX_PIN_NUMBER,
-        .tx_pin_no    = TX_PIN_NUMBER,
+        .rx_pin_no    = 25,
+        .tx_pin_no    = 26,
         .rts_pin_no   = RTS_PIN_NUMBER,
         .cts_pin_no   = CTS_PIN_NUMBER,
         .flow_control = APP_UART_FLOW_CONTROL_DISABLED,
         .use_parity   = false,
 #if defined (UART_PRESENT)
-        .baud_rate    = NRF_UART_BAUDRATE_115200
+        .baud_rate    = NRF_UART_BAUDRATE_9600
 #else
         .baud_rate    = NRF_UARTE_BAUDRATE_115200
 #endif

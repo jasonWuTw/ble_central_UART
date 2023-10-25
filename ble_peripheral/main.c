@@ -79,6 +79,8 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
+#include "nrf_gpio.h"
+#include "nrf_delay.h"
 
 #define APP_BLE_CONN_CFG_TAG            1                                           /**< A tag identifying the SoftDevice BLE configuration. */
 
@@ -104,6 +106,15 @@
 #define UART_TX_BUF_SIZE                256                                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
 
+#define MCU_POWER_HOLD 	        2	//PO.02
+#define POWER_ON 				3	//PO.03
+#define MODE_UP					4	//PO.04
+#define MODE_DOWN				5	//PO.05
+
+#define RM_LED1 6 // P0.06
+#define RM_LED2 7 // P0.07
+#define RM_LED3 8 // P0.08
+#define BLE_LED 17 // P0.17
 
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                   /**< BLE NUS service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
@@ -646,6 +657,11 @@ static void buttons_leds_init(bool * p_erase_bonds)
     APP_ERROR_CHECK(err_code);
 
     *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
+	
+    nrf_gpio_cfg_output(RM_LED1);  
+	nrf_gpio_cfg_output(RM_LED2);
+	nrf_gpio_cfg_output(RM_LED3); 
+	nrf_gpio_cfg_output(BLE_LED); 
 }
 
 
@@ -716,9 +732,16 @@ int main(void)
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 
+
     // Enter main loop.
     for (;;)
     {
+        nrf_gpio_pin_toggle(RM_LED1);
+        nrf_gpio_pin_toggle(RM_LED2);
+        nrf_gpio_pin_toggle(RM_LED3);
+        nrf_gpio_pin_toggle(BLE_LED);
+        nrf_delay_ms(500);
+			
         idle_state_handle();
     }
 }

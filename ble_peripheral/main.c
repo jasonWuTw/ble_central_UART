@@ -732,16 +732,18 @@ int main(void)
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 
-
-    // Enter main loop.
-    for (;;)
-    {
+		//LED test  
+		for(int i = 0; i <5; i++) {
         nrf_gpio_pin_toggle(RM_LED1);
         nrf_gpio_pin_toggle(RM_LED2);
         nrf_gpio_pin_toggle(RM_LED3);
         nrf_gpio_pin_toggle(BLE_LED);
         nrf_delay_ms(500);
-			
+		}
+
+    // Enter main loop.
+    for (;;)
+    {
         idle_state_handle();
     }
 }

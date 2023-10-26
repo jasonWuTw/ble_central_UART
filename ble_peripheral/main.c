@@ -659,9 +659,10 @@ static void buttons_leds_init(bool * p_erase_bonds)
     *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
 	
     nrf_gpio_cfg_output(RM_LED1);  
-	nrf_gpio_cfg_output(RM_LED2);
-	nrf_gpio_cfg_output(RM_LED3); 
-	nrf_gpio_cfg_output(BLE_LED); 
+		nrf_gpio_cfg_output(RM_LED2);
+		nrf_gpio_cfg_output(RM_LED3); 
+		nrf_gpio_cfg_output(BLE_LED); 
+    nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_PULLUP);
 }
 
 

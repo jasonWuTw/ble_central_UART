@@ -328,10 +328,18 @@ static void sleep_mode_enter(void)
     // Prepare wakeup buttons.
     err_code = bsp_btn_ble_sleep_mode_prepare();
     APP_ERROR_CHECK(err_code);
-
+	
+		/* ERROR 8198
+		The chip will enter Emulated System OFF mode if it is in debug interface mode, 
+		and in that case, immediately return 
+		from the sd_power_system_off() call instead of entering sleep. 
+		So you need to make sure 
+		the debug interface is disabled to properly test System OFF mode on your device. 
+		https://devzone.nordicsemi.com/f/nordic-q-a/57224/app-error-8198-at-err_code-sd_power_system_off/232052
+		*/
     // Go to system-off mode (this function will not return; wakeup will cause a reset).
-    err_code = sd_power_system_off();
-    APP_ERROR_CHECK(err_code);
+    //err_code = sd_power_system_off();
+    //APP_ERROR_CHECK(err_code);
 }
 
 

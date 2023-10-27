@@ -69,6 +69,17 @@
 #include "bsp_btn_ble.h"
 #include "nrf_pwr_mgmt.h"
 
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
+#include "nrf_gpio.h"
+#include "nrf_delay.h"
+
+#include <stdbool.h>
+#include "nrf_drv_gpiote.h"
+#include "app_error.h"
+#include "boards.h"
+
 #if defined (UART_PRESENT)
 #include "nrf_uart.h"
 #endif
@@ -76,11 +87,6 @@
 #include "nrf_uarte.h"
 #endif
 
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
-#include "nrf_gpio.h"
-#include "nrf_delay.h"
 
 #define APP_BLE_CONN_CFG_TAG            1                                           /**< A tag identifying the SoftDevice BLE configuration. */
 
@@ -106,15 +112,18 @@
 #define UART_TX_BUF_SIZE                256                                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
 
-#define MCU_POWER_HOLD 	        2	//PO.02
-#define POWER_ON 				3	//PO.03
-#define MODE_UP					4	//PO.04
-#define MODE_DOWN				5	//PO.05
-
+#define MCU_POWER_HOLD 2	//PO.02
+#define POWER_ON 3	//PO.03
+#define MODE_UP 4	//PO.04
+#define MODE_DOWN 5	//PO.05
 #define RM_LED1 6 // P0.06
 #define RM_LED2 7 // P0.07
 #define RM_LED3 8 // P0.08
 #define BLE_LED 17 // P0.17
+#define MODE_LED1 22	// P0.22
+#define MODE_LED2 23	// P0.23
+#define MODE_LED3 24	// P0.24
+#define CELL_V 29	// P0.29
 
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                   /**< BLE NUS service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
@@ -127,6 +136,65 @@ static ble_uuid_t m_adv_uuids[]          =                                      
 {
     {BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}
 };
+
+
+/**
+ * @brief Interrupt handler for wakeup pins
+ */
+void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+		if(pin == MODE_UP)
+		{
+            nrf_gpio_pin_toggle(RM_LED1);
+		}
+		if(pin == MODE_DOWN)
+		{
+            nrf_gpio_pin_toggle(RM_LED2);
+		}
+}
+
+/**
+ * @brief Function for configuring: Button and LED
+ */
+static void gpio_init(void)
+{
+    ret_code_t err_code;
+
+    //Initialize gpiote module
+    err_code = nrf_drv_gpiote_init();
+    APP_ERROR_CHECK(err_code);
+    
+		//Initialize output pin
+/*    nrf_drv_gpiote_out_config_t out_config = GPIOTE_CONFIG_OUT_SIMPLE(false);        //Configure output button
+    err_code = nrf_drv_gpiote_out_init(RM_LED1, &out_config);                        //Initialize output button
+    APP_ERROR_CHECK(err_code);                                                       //Check potential error
+    nrf_drv_gpiote_out_clear(RM_LED1);                                               //Turn on LED to indicate that nRF5x is not in System-off mode
+*/
+
+    nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(false);     //Configure to generate interrupt and wakeup on pin signal low. "false" means that gpiote will use the PORT event, which is low power, i.e. does not add any noticable current consumption (<<1uA). Setting this to "true" will make the gpiote module use GPIOTE->IN events which add ~8uA for nRF52 and ~1mA for nRF51.
+	
+		//MODE_UP - Configure sense input pin to enable wakeup and interrupt on button press.
+    in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
+    err_code = nrf_drv_gpiote_in_init(MODE_UP, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
+    APP_ERROR_CHECK(err_code);                                                          //Check potential error
+    nrf_drv_gpiote_in_event_enable(MODE_UP, true);                            //Enable event and interrupt for the wakeup pin
+
+		//MODE_DOWN - Configure sense input pin to enable wakeup and interrupt on button press.
+    in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
+    err_code = nrf_drv_gpiote_in_init(MODE_DOWN, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
+    APP_ERROR_CHECK(err_code);                                                          //Check potential error
+    nrf_drv_gpiote_in_event_enable(MODE_DOWN, true); 
+		
+		//other
+    nrf_gpio_cfg_output(RM_LED1);  
+		nrf_gpio_cfg_output(RM_LED2);
+		nrf_gpio_cfg_output(RM_LED3); 
+		nrf_gpio_cfg_output(BLE_LED); 
+		nrf_gpio_cfg_output(MODE_LED1); 
+		nrf_gpio_cfg_output(MODE_LED2); 
+		nrf_gpio_cfg_output(MODE_LED3); 
+    nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_PULLUP);
+}
 
 
 /**@brief Function for assert macro callback.
@@ -665,12 +733,6 @@ static void buttons_leds_init(bool * p_erase_bonds)
     APP_ERROR_CHECK(err_code);
 
     *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
-	
-    nrf_gpio_cfg_output(RM_LED1);  
-		nrf_gpio_cfg_output(RM_LED2);
-		nrf_gpio_cfg_output(RM_LED3); 
-		nrf_gpio_cfg_output(BLE_LED); 
-    nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_PULLUP);
 }
 
 
@@ -724,10 +786,11 @@ int main(void)
     bool erase_bonds;
 
     // Initialize.
+    gpio_init();
     uart_init();
     log_init();
     timers_init();
-    buttons_leds_init(&erase_bonds);
+    //buttons_leds_init(&erase_bonds);
     power_management_init();
     ble_stack_init();
     gap_params_init();
@@ -742,18 +805,26 @@ int main(void)
     advertising_start();
 
 		//LED test  
-		for(int i = 0; i <5; i++) {
+		for(int i = 0; i <7; i++) {
         nrf_gpio_pin_toggle(RM_LED1);
         nrf_gpio_pin_toggle(RM_LED2);
         nrf_gpio_pin_toggle(RM_LED3);
         nrf_gpio_pin_toggle(BLE_LED);
-        nrf_delay_ms(500);
+        nrf_gpio_pin_toggle(MODE_LED1);
+        nrf_gpio_pin_toggle(MODE_LED2);
+        nrf_gpio_pin_toggle(MODE_LED3);
+        nrf_delay_ms(200);
 		}
 
     // Enter main loop.
     for (;;)
     {
-        idle_state_handle();
+				//Enter System-on idle mode
+				__WFE();
+				__SEV();
+				__WFE();	
+			
+        //idle_state_handle();
     }
 }
 

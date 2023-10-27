@@ -726,8 +726,7 @@ static void buttons_leds_init(bool * p_erase_bonds)
 {
     bsp_event_t startup_event;
 
-    //不註解,出現[NRF_ERROR_NO_MEM]
-    //註解,NRF_LOG_INFO出不來
+    // NULL --> NRF_ERROR_NO_MEM]
     uint32_t err_code = bsp_init(NULL, bsp_event_handler);
     APP_ERROR_CHECK(err_code);
 
@@ -826,7 +825,7 @@ int main(void)
 				__SEV();
 				__WFE();	
 			
-        //idle_state_handle();
+        idle_state_handle();
     }
 }
 

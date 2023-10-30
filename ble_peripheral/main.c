@@ -125,6 +125,12 @@
 #define MODE_LED3 24	// P0.24
 #define CELL_V 29	// P0.29
 
+/* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
+static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(char)0x00}; 
+static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
+static uint8_t mode_command_2[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
+static uint8_t mode_command_3[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                   /**< BLE NUS service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                             /**< Context for the Queued Write module.*/
@@ -145,11 +151,33 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
 		if(pin == MODE_UP)
 		{
-            nrf_gpio_pin_toggle(RM_LED1);
+			nrf_gpio_pin_toggle(RM_LED1);
+
+			//mode_command_2
+			uint32_t err_code;
+			uint16_t mode2_command_size = (uint16_t)sizeof(mode_command_2);
+			err_code = ble_nus_data_send(&m_nus, mode_command_2, &mode2_command_size, m_conn_handle);										
+			if ((err_code != NRF_ERROR_INVALID_STATE) &&
+					(err_code != NRF_ERROR_RESOURCES) &&
+					(err_code != NRF_ERROR_NOT_FOUND))
+			{
+					APP_ERROR_CHECK(err_code);
+			}
 		}
 		if(pin == MODE_DOWN)
 		{
-            nrf_gpio_pin_toggle(RM_LED2);
+			nrf_gpio_pin_toggle(RM_LED2);
+
+			//mode_command_3
+			uint32_t err_code;
+			uint16_t mode3_command_size = (uint16_t)sizeof(mode_command_3);
+			err_code = ble_nus_data_send(&m_nus, mode_command_3, &mode3_command_size, m_conn_handle);										
+			if ((err_code != NRF_ERROR_INVALID_STATE) &&
+					(err_code != NRF_ERROR_RESOURCES) &&
+					(err_code != NRF_ERROR_NOT_FOUND))
+			{
+					APP_ERROR_CHECK(err_code);
+			}
 		}
 }
 
@@ -279,8 +307,8 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
     {
         uint32_t err_code;
 
-        NRF_LOG_DEBUG("Received data from BLE NUS. Writing data on UART.");
-        NRF_LOG_HEXDUMP_DEBUG(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+        NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
+        NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
 
         for (uint32_t i = 0; i < p_evt->params.rx_data.length; i++)
         {
@@ -806,7 +834,7 @@ int main(void)
     advertising_start();
 
 		//LED test  
-		for(int i = 0; i <7; i++) {
+		for(int i = 0; i <6; i++) {
         nrf_gpio_pin_toggle(RM_LED1);
         nrf_gpio_pin_toggle(RM_LED2);
         nrf_gpio_pin_toggle(RM_LED3);
@@ -816,6 +844,11 @@ int main(void)
         nrf_gpio_pin_toggle(MODE_LED3);
         nrf_delay_ms(200);
 		}
+		//Turn off LED
+		nrf_gpio_pin_set(RM_LED1); // Turn off LED
+		nrf_gpio_pin_set(RM_LED2); // Turn off LED
+		nrf_gpio_pin_set(RM_LED3); // Turn off LED
+		nrf_gpio_pin_set(BLE_LED); // Turn off LED
 
     // Enter main loop.
     for (;;)

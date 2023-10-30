@@ -44,7 +44,7 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 			
 				//Disable power-down button to prevent System-off wakeup
 				nrf_drv_gpiote_in_uninit(PIN_IN_POWER_DOWN);           
-        nrf_drv_gpiote_in_event_disable(PIN_IN_POWER_DOWN);  
+        		nrf_drv_gpiote_in_event_disable(PIN_IN_POWER_DOWN);  
 			
 				//Configure wake-up button
 				nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(false);     //Configure to generate interrupt and wakeup on pin signal low. "false" means that gpiote will use the PORT event, which is low power, i.e. does not add any noticable current consumption (<<1uA). Setting this to "true" will make the gpiote module use GPIOTE->IN events which add ~8uA for nRF52 and ~1mA for nRF51.

@@ -152,8 +152,8 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 		if(pin == MODE_UP)
 		{
 			nrf_gpio_pin_toggle(RM_LED1);
-
-			//mode_command_2
+ 
+			//Send mode_command_2 by ble_nus_data_send
 			uint32_t err_code;
 			uint16_t mode2_command_size = (uint16_t)sizeof(mode_command_2);
 			err_code = ble_nus_data_send(&m_nus, mode_command_2, &mode2_command_size, m_conn_handle);										
@@ -168,7 +168,7 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 		{
 			nrf_gpio_pin_toggle(RM_LED2);
 
-			//mode_command_3
+			//Send mode_command_3 by ble_nus_data_send
 			uint32_t err_code;
 			uint16_t mode3_command_size = (uint16_t)sizeof(mode_command_3);
 			err_code = ble_nus_data_send(&m_nus, mode_command_3, &mode3_command_size, m_conn_handle);										

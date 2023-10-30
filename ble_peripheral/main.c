@@ -143,42 +143,36 @@ static ble_uuid_t m_adv_uuids[]          =                                      
     {BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}
 };
 
+/**
+ * Function to send a mode command over BLE NUS 
+ */
+static void send_mode_cmd(uint8_t *data, uint16_t length)
+{
+  uint32_t err_code;
+  
+  err_code = ble_nus_data_send(&m_nus, data, &length, m_conn_handle);
+  if ((err_code != NRF_ERROR_INVALID_STATE) && 
+      (err_code != NRF_ERROR_RESOURCES) &&
+      (err_code != NRF_ERROR_NOT_FOUND))
+  {
+       APP_ERROR_CHECK(err_code);
+  }
+}
 
 /**
  * @brief Interrupt handler for wakeup pins
  */
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-		if(pin == MODE_UP)
-		{
-			nrf_gpio_pin_toggle(RM_LED1);
- 
-			//Send mode_command_2 by ble_nus_data_send
-			uint32_t err_code;
-			uint16_t mode2_command_size = (uint16_t)sizeof(mode_command_2);
-			err_code = ble_nus_data_send(&m_nus, mode_command_2, &mode2_command_size, m_conn_handle);										
-			if ((err_code != NRF_ERROR_INVALID_STATE) &&
-					(err_code != NRF_ERROR_RESOURCES) &&
-					(err_code != NRF_ERROR_NOT_FOUND))
-			{
-					APP_ERROR_CHECK(err_code);
-			}
-		}
-		if(pin == MODE_DOWN)
-		{
-			nrf_gpio_pin_toggle(RM_LED2);
-
-			//Send mode_command_3 by ble_nus_data_send
-			uint32_t err_code;
-			uint16_t mode3_command_size = (uint16_t)sizeof(mode_command_3);
-			err_code = ble_nus_data_send(&m_nus, mode_command_3, &mode3_command_size, m_conn_handle);										
-			if ((err_code != NRF_ERROR_INVALID_STATE) &&
-					(err_code != NRF_ERROR_RESOURCES) &&
-					(err_code != NRF_ERROR_NOT_FOUND))
-			{
-					APP_ERROR_CHECK(err_code);
-			}
-		}
+  if (pin == MODE_UP) {    
+    nrf_gpio_pin_toggle(RM_LED1);
+    // Send mode command 2
+    send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+  } else if (pin == MODE_DOWN) {
+    nrf_gpio_pin_toggle(RM_LED2);
+    // Send mode command 3
+    send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+  }
 }
 
 /**

@@ -643,7 +643,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
                 (data_array[index - 1] == '\r') ||
                 (index >= m_ble_nus_max_data_len))
             {*/
-                if (index > 0)
+                /*if (index > 0)
                 {
                     NRF_LOG_DEBUG("Ready to send data over BLE NUS");
                     NRF_LOG_HEXDUMP_DEBUG(data_array, index);
@@ -659,14 +659,14 @@ void uart_event_handle(app_uart_evt_t * p_event)
                             APP_ERROR_CHECK(err_code);
                         }
                     } while (err_code == NRF_ERROR_RESOURCES);
-                }
+                }*/
 
                 index = 0;
             //}
             break;
 
         case APP_UART_COMMUNICATION_ERROR:
-            APP_ERROR_HANDLER(p_event->data.error_communication);
+            //APP_ERROR_HANDLER(p_event->data.error_communication); //[NRF_ERROR_DATA_SIZE] when RT/TX no connectiion.
             break;
 
         case APP_UART_FIFO_ERROR:

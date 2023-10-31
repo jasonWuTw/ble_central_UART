@@ -130,6 +130,7 @@ static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(cha
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
 static uint8_t mode_command_2[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
 static uint8_t mode_command_3[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+static bool usingRX_TX = false; // is using RX and TX
 
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                   /**< BLE NUS service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
@@ -636,14 +637,14 @@ void uart_event_handle(app_uart_evt_t * p_event)
     switch (p_event->evt_type)
     {
         case APP_UART_DATA_READY:
-            UNUSED_VARIABLE(app_uart_get(&data_array[index]));
-            index++;
-
-            /*if ((data_array[index - 1] == '\n') ||
+            if(usingRX_TX){
+                UNUSED_VARIABLE(app_uart_get(&data_array[index]));
+                index++;
+                /*if ((data_array[index - 1] == '\n') ||
                 (data_array[index - 1] == '\r') ||
                 (index >= m_ble_nus_max_data_len))
-            {*/
-                /*if (index > 0)
+                {*/
+                if (index > 0)
                 {
                     NRF_LOG_DEBUG("Ready to send data over BLE NUS");
                     NRF_LOG_HEXDUMP_DEBUG(data_array, index);
@@ -659,14 +660,16 @@ void uart_event_handle(app_uart_evt_t * p_event)
                             APP_ERROR_CHECK(err_code);
                         }
                     } while (err_code == NRF_ERROR_RESOURCES);
-                }*/
-
+                }
                 index = 0;
-            //}
+								//}
+							}
             break;
 
         case APP_UART_COMMUNICATION_ERROR:
-            //APP_ERROR_HANDLER(p_event->data.error_communication); //[NRF_ERROR_DATA_SIZE] when RT/TX no connectiion.
+            if(usingRX_TX){
+							APP_ERROR_HANDLER(p_event->data.error_communication); //[NRF_ERROR_DATA_SIZE] when RT/TX no connect.
+						}
             break;
 
         case APP_UART_FIFO_ERROR:
@@ -801,6 +804,28 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
+void led_test_and_turn_off(void) {
+    //LED test  
+    for(int i = 0; i <6; i++) {
+        nrf_gpio_pin_toggle(RM_LED1);
+        nrf_gpio_pin_toggle(RM_LED2);
+        nrf_gpio_pin_toggle(RM_LED3);
+        nrf_gpio_pin_toggle(BLE_LED);
+        nrf_gpio_pin_toggle(MODE_LED1);
+        nrf_gpio_pin_toggle(MODE_LED2);
+        nrf_gpio_pin_toggle(MODE_LED3);
+        nrf_delay_ms(200);
+    }
+    //Turn off LED
+    nrf_gpio_pin_set(RM_LED1); // Turn off LED
+    nrf_gpio_pin_set(RM_LED2); // Turn off LED
+    nrf_gpio_pin_set(RM_LED3); // Turn off LED
+    nrf_gpio_pin_set(BLE_LED); // Turn off LED
+    nrf_gpio_pin_set(MODE_LED1); // Turn off LED
+    nrf_gpio_pin_set(MODE_LED2); // Turn off LED
+    nrf_gpio_pin_set(MODE_LED3); // Turn off LED
+}
+
 
 /**@brief Application main function.
  */
@@ -827,22 +852,7 @@ int main(void)
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 
-		//LED test  
-		for(int i = 0; i <6; i++) {
-        nrf_gpio_pin_toggle(RM_LED1);
-        nrf_gpio_pin_toggle(RM_LED2);
-        nrf_gpio_pin_toggle(RM_LED3);
-        nrf_gpio_pin_toggle(BLE_LED);
-        nrf_gpio_pin_toggle(MODE_LED1);
-        nrf_gpio_pin_toggle(MODE_LED2);
-        nrf_gpio_pin_toggle(MODE_LED3);
-        nrf_delay_ms(200);
-		}
-		//Turn off LED
-		nrf_gpio_pin_set(RM_LED1); // Turn off LED
-		nrf_gpio_pin_set(RM_LED2); // Turn off LED
-		nrf_gpio_pin_set(RM_LED3); // Turn off LED
-		nrf_gpio_pin_set(BLE_LED); // Turn off LED
+    led_test_and_turn_off();
 
     // Enter main loop.
     for (;;)

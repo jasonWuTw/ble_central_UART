@@ -124,6 +124,7 @@
 #define MODE_LED2 23	// P0.23
 #define MODE_LED3 24	// P0.24
 #define CELL_V 29	// P0.29
+#define MAX_RECEIVED_BLE_ARRAY_SIZE 50
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(char)0x00}; 
@@ -131,6 +132,9 @@ static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01
 static uint8_t mode_command_2[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
 static uint8_t mode_command_3[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
 static bool usingRX_TX = false; // is using RX and TX
+//received_ble_data_array (FIFO)
+static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
+static uint8_t received_ble_data_length = 0;
 
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                   /**< BLE NUS service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
@@ -166,11 +170,11 @@ static void send_mode_cmd(uint8_t *data, uint16_t length)
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
   if (pin == MODE_UP) {    
-    nrf_gpio_pin_toggle(RM_LED1);
+    //nrf_gpio_pin_toggle(RM_LED1);
     // Send mode command 2
     send_mode_cmd(mode_command_2, sizeof(mode_command_2));
   } else if (pin == MODE_DOWN) {
-    nrf_gpio_pin_toggle(RM_LED2);
+    //nrf_gpio_pin_toggle(RM_LED2);
     // Send mode command 3
     send_mode_cmd(mode_command_3, sizeof(mode_command_3));
   }
@@ -286,6 +290,57 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
     APP_ERROR_HANDLER(nrf_error);
 }
 
+bool is_prefix_equal(uint8_t* arr1, uint8_t* arr2) {
+  if (sizeof(arr1)>sizeof(arr2)) return false;
+  for (int i = 0; i < sizeof(arr1); i++) {
+    if (arr1[i] != arr2[i]) {
+      return false; 
+    }
+  }
+  return true;
+}
+
+char is_equal_command( uint8_t* arr2) {
+	if(is_prefix_equal(mode_command_1,arr2)){
+      return '1'; 
+	}
+	if(is_prefix_equal(mode_command_2,arr2)){
+      return '2'; 
+	}
+  return ' ';
+}
+
+
+static void handle_received_nus_data(ble_nus_evt_t * p_evt) {
+
+  if (received_ble_data_length == 0) {
+
+    if (p_evt->params.rx_data.length <= MAX_RECEIVED_BLE_ARRAY_SIZE) {
+
+      memcpy(received_ble_data_array, p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+      received_ble_data_length = p_evt->params.rx_data.length;
+
+    } else {
+
+      NRF_LOG_INFO("Data too long to fit in the array.");
+    }
+
+  } else {
+
+    if (received_ble_data_length + p_evt->params.rx_data.length <= MAX_RECEIVED_BLE_ARRAY_SIZE) {
+
+      memcpy(received_ble_data_array + received_ble_data_length, p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+      received_ble_data_length += p_evt->params.rx_data.length;
+
+    } else {
+
+      NRF_LOG_INFO("Data too long to fit in the array.");
+    }
+  
+  }
+
+}
+
 
 /**@brief Function for handling the data from the Nordic UART Service.
  *
@@ -297,32 +352,43 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_evt_t * p_evt)
 {
-
     if (p_evt->type == BLE_NUS_EVT_RX_DATA)
     {
-        uint32_t err_code;
-
-        NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
-        NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
-
-        for (uint32_t i = 0; i < p_evt->params.rx_data.length; i++)
-        {
-            do
-            {
-                err_code = app_uart_put(p_evt->params.rx_data.p_data[i]);
-                if ((err_code != NRF_SUCCESS) && (err_code != NRF_ERROR_BUSY))
-                {
-                    NRF_LOG_ERROR("Failed receiving NUS message. Error 0x%x. ", err_code);
-                    APP_ERROR_CHECK(err_code);
-                }
-            } while (err_code == NRF_ERROR_BUSY);
-        }
-        if (p_evt->params.rx_data.p_data[p_evt->params.rx_data.length - 1] == '\r')
-        {
-            while (app_uart_put('\n') == NRF_ERROR_BUSY);
-        }
+			uint32_t err_code;
+      //NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
+			//NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+			handle_received_nus_data(p_evt);
+			//NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+			//NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+			
+			if(received_ble_data_length>4){
+				do {
+					switch ( is_equal_command(received_ble_data_array) )
+					{
+						 case '1':
+								NRF_LOG_INFO("is_prefix_equal : true");
+								memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+								received_ble_data_length -= 5;	
+								nrf_gpio_pin_toggle(RM_LED2);
+								break;
+						 case '2':
+								NRF_LOG_INFO("is_prefix_equal : true");
+								memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+								received_ble_data_length -= 5;		
+								nrf_gpio_pin_toggle(RM_LED2);		
+								break;
+						 default:
+								NRF_LOG_INFO("is_prefix_equal : false");
+								memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
+								received_ble_data_length -= 1;						
+						}
+						//NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+						//NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+					} while (received_ble_data_length > 4);
+					//NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+					//NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+				}
     }
-
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -673,7 +739,9 @@ void uart_event_handle(app_uart_evt_t * p_event)
             break;
 
         case APP_UART_FIFO_ERROR:
-            APP_ERROR_HANDLER(p_event->data.error_code);
+            if(usingRX_TX){
+							APP_ERROR_HANDLER(p_event->data.error_code);
+						}
             break;
 
         default:

@@ -1,53 +1,10 @@
 /**
- * Copyright (c) 2014 - 2021, Nordic Semiconductor ASA
+ * Copyright (c) 2023 - 2021, Matsutek
  *
  * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form, except as embedded into a Nordic
- *    Semiconductor ASA integrated circuit in a product or a software update for
- *    such product, must reproduce the above copyright notice, this list of
- *    conditions and the following disclaimer in the documentation and/or other
- *    materials provided with the distribution.
- *
- * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *    contributors may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
- *
- * 4. This software, with or without modification, must only be used with a
- *    Nordic Semiconductor ASA integrated circuit.
- *
- * 5. Any software provided in binary form under this license must not be reverse
- *    engineered, decompiled, modified and/or disassembled.
- *
- * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
- * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Handlebar - BLE (perpheral-Device)
  *
  */
-/** @file
- *
- * @defgroup ble_sdk_uart_over_ble_main main.c
- * @{
- * @ingroup  ble_sdk_app_nus_eval
- * @brief    UART over BLE application main file.
- *
- * This file contains the source code for a sample application that uses the Nordic UART service.
- * This application uses the @ref srvlib_conn_params module.
- */
-
 
 #include <stdint.h>
 #include <string.h>
@@ -86,7 +43,6 @@
 #if defined (UARTE_PRESENT)
 #include "nrf_uarte.h"
 #endif
-
 
 #define APP_BLE_CONN_CFG_TAG            1                                           /**< A tag identifying the SoftDevice BLE configuration. */
 
@@ -191,7 +147,7 @@ static void gpio_init(void)
     err_code = nrf_drv_gpiote_init();
     APP_ERROR_CHECK(err_code);
     
-		//Initialize output pin
+	//Initialize output pin
 /*    nrf_drv_gpiote_out_config_t out_config = GPIOTE_CONFIG_OUT_SIMPLE(false);        //Configure output button
     err_code = nrf_drv_gpiote_out_init(RM_LED1, &out_config);                        //Initialize output button
     APP_ERROR_CHECK(err_code);                                                       //Check potential error
@@ -200,13 +156,13 @@ static void gpio_init(void)
 
     nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(false);     //Configure to generate interrupt and wakeup on pin signal low. "false" means that gpiote will use the PORT event, which is low power, i.e. does not add any noticable current consumption (<<1uA). Setting this to "true" will make the gpiote module use GPIOTE->IN events which add ~8uA for nRF52 and ~1mA for nRF51.
 	
-		//MODE_UP - Configure sense input pin to enable wakeup and interrupt on button press.
+	//MODE_UP - Configure sense input pin to enable wakeup and interrupt on button press.
     in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
     err_code = nrf_drv_gpiote_in_init(MODE_UP, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
     nrf_drv_gpiote_in_event_enable(MODE_UP, true);                            //Enable event and interrupt for the wakeup pin
 
-		//MODE_DOWN - Configure sense input pin to enable wakeup and interrupt on button press.
+	//MODE_DOWN - Configure sense input pin to enable wakeup and interrupt on button press.
     in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
     err_code = nrf_drv_gpiote_in_init(MODE_DOWN, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
@@ -289,7 +245,14 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
 }
+/**
+ * Checks if the prefix of `arr1` is equal to `arr2`.
 
+ * @param arr1 A pointer to the first array.
+ * @param arr2 A pointer to the second array.
+
+ * @return `true` if the prefix of `arr1` is equal to `arr2`, `false` otherwise.
+ */
 bool is_prefix_equal(uint8_t* arr1, uint8_t* arr2) {
   if (sizeof(arr1)>sizeof(arr2)) return false;
   for (int i = 0; i < sizeof(arr1); i++) {
@@ -300,6 +263,13 @@ bool is_prefix_equal(uint8_t* arr1, uint8_t* arr2) {
   return true;
 }
 
+/**
+ * Checks if the given array is equal to either the mode command array.
+
+ * @param arr2 A pointer to the array to check.
+
+ * @return `'1'` if the array is equal to `mode_command_1`, `'2'` if the array is equal to `mode_command_2`, or `' '` otherwise.
+ */
 char is_equal_command( uint8_t* arr2) {
 	if(is_prefix_equal(mode_command_1,arr2)){
       return '1'; 
@@ -310,35 +280,32 @@ char is_equal_command( uint8_t* arr2) {
   return ' ';
 }
 
-
+/**
+ * @brief Handle received BLE NUS data
+ * 
+ * This function handles the received BLE NUS data and copies it into 
+ * the global received_ble_data_array buffer.
+ * 
+ * If the buffer is full, log an error message.
+ * 
+ * @param[in] p_evt   The BLE NUS event containing RX data
+ */
 static void handle_received_nus_data(ble_nus_evt_t * p_evt) {
-
   if (received_ble_data_length == 0) {
-
     if (p_evt->params.rx_data.length <= MAX_RECEIVED_BLE_ARRAY_SIZE) {
-
       memcpy(received_ble_data_array, p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
       received_ble_data_length = p_evt->params.rx_data.length;
-
     } else {
-
       NRF_LOG_INFO("Data too long to fit in the array.");
     }
-
   } else {
-
     if (received_ble_data_length + p_evt->params.rx_data.length <= MAX_RECEIVED_BLE_ARRAY_SIZE) {
-
       memcpy(received_ble_data_array + received_ble_data_length, p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
       received_ble_data_length += p_evt->params.rx_data.length;
-
     } else {
-
       NRF_LOG_INFO("Data too long to fit in the array.");
     }
-  
   }
-
 }
 
 
@@ -354,40 +321,39 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
 {
     if (p_evt->type == BLE_NUS_EVT_RX_DATA)
     {
-			uint32_t err_code;
-      //NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
-			//NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
-			handle_received_nus_data(p_evt);
-			//NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
-			//NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
-			
-			if(received_ble_data_length>4){
-				do {
-					switch ( is_equal_command(received_ble_data_array) )
-					{
-						 case '1':
-								NRF_LOG_INFO("is_prefix_equal : true");
-								memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-								received_ble_data_length -= 5;	
-								nrf_gpio_pin_toggle(RM_LED2);
-								break;
-						 case '2':
-								NRF_LOG_INFO("is_prefix_equal : true");
-								memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-								received_ble_data_length -= 5;		
-								nrf_gpio_pin_toggle(RM_LED2);		
-								break;
-						 default:
-								NRF_LOG_INFO("is_prefix_equal : false");
-								memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
-								received_ble_data_length -= 1;						
-						}
-						//NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
-						//NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
-					} while (received_ble_data_length > 4);
-					//NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
-					//NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
-				}
+        uint32_t err_code;
+        //NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
+        //NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+        handle_received_nus_data(p_evt);
+        //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+        //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+        if(received_ble_data_length>4){
+            do {
+                switch ( is_equal_command(received_ble_data_array) )
+                {
+                    case '1':
+                        NRF_LOG_INFO("is_prefix_equal : true");
+                        memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+                        received_ble_data_length -= 5;	
+                        nrf_gpio_pin_toggle(RM_LED2);
+                        break;
+                    case '2':
+                        NRF_LOG_INFO("is_prefix_equal : true");
+                        memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+                        received_ble_data_length -= 5;		
+                        nrf_gpio_pin_toggle(RM_LED2);		
+                        break;
+                    default:
+                        NRF_LOG_INFO("is_prefix_equal : false");
+                        memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
+                        received_ble_data_length -= 1;						
+                    }
+                    //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+                    //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+                } while (received_ble_data_length > 4);
+                //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+                //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+            }
     }
 }
 /**@snippet [Handling the data received over BLE] */
@@ -486,14 +452,14 @@ static void sleep_mode_enter(void)
     err_code = bsp_btn_ble_sleep_mode_prepare();
     APP_ERROR_CHECK(err_code);
 	
-		/* ERROR 8198
-		The chip will enter Emulated System OFF mode if it is in debug interface mode, 
-		and in that case, immediately return 
-		from the sd_power_system_off() call instead of entering sleep. 
-		So you need to make sure 
-		the debug interface is disabled to properly test System OFF mode on your device. 
-		https://devzone.nordicsemi.com/f/nordic-q-a/57224/app-error-8198-at-err_code-sd_power_system_off/232052
-		*/
+    /* ERROR 8198
+    The chip will enter Emulated System OFF mode if it is in debug interface mode, 
+    and in that case, immediately return 
+    from the sd_power_system_off() call instead of entering sleep. 
+    So you need to make sure 
+    the debug interface is disabled to properly test System OFF mode on your device. 
+    https://devzone.nordicsemi.com/f/nordic-q-a/57224/app-error-8198-at-err_code-sd_power_system_off/232052
+    */
     // Go to system-off mode (this function will not return; wakeup will cause a reset).
     //err_code = sd_power_system_off();
     //APP_ERROR_CHECK(err_code);
@@ -714,7 +680,6 @@ void uart_event_handle(app_uart_evt_t * p_event)
                 {
                     NRF_LOG_DEBUG("Ready to send data over BLE NUS");
                     NRF_LOG_HEXDUMP_DEBUG(data_array, index);
-
                     do
                     {
                         uint16_t length = (uint16_t)index;
@@ -729,7 +694,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
                 }
                 index = 0;
 								//}
-							}
+            }
             break;
 
         case APP_UART_COMMUNICATION_ERROR:

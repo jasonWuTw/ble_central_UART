@@ -990,10 +990,10 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
-				//Enter System-on idle mode
-				__WFE();
-				__SEV();
-				__WFE();	
+        //Enter System-on idle mode
+        __WFE();
+        __SEV();
+        __WFE();	
 			
         idle_state_handle();
     }

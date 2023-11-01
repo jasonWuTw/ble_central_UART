@@ -85,7 +85,7 @@
 #define CELL_V 29	// P0.29
 #define MAX_RECEIVED_BLE_ARRAY_SIZE 50
 
-const nrf_drv_timer_t TIMER_LED = NRF_DRV_TIMER_INSTANCE(1);
+const nrf_drv_timer_t TIMER_1 = NRF_DRV_TIMER_INSTANCE(1);
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
@@ -116,7 +116,7 @@ static ble_uuid_t m_adv_uuids[]          =                                      
 /**
  * @brief Handler for timer events.
  */
-void timer_led_event_handler(nrf_timer_event_t event_type, void* p_context)
+void timer_1_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
     //static uint32_t i;
     //uint32_t led_to_invert = ((i++) % LEDS_NUMBER);
@@ -977,14 +977,14 @@ int main(void)
     uint32_t time_ms = 500; //Time(in miliseconds) between consecutive compare events.
     uint32_t time_ticks;
     uint32_t err_code = NRF_SUCCESS;
-    //Configure TIMER_LED for generating simple light effect - leds on board will invert his state one after the other.
+    //Configure TIMER_1 for generating simple light effect - leds on board will invert his state one after the other.
     nrf_drv_timer_config_t timer_cfg = NRF_DRV_TIMER_DEFAULT_CONFIG;
-    err_code = nrf_drv_timer_init(&TIMER_LED, &timer_cfg, timer_led_event_handler);
+    err_code = nrf_drv_timer_init(&TIMER_1, &timer_cfg, timer_1_event_handler);
     APP_ERROR_CHECK(err_code);
-    time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_LED, time_ms);
+    time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_1, time_ms);
     nrf_drv_timer_extended_compare(
-         &TIMER_LED, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
-    nrf_drv_timer_enable(&TIMER_LED);
+         &TIMER_1, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
+    nrf_drv_timer_enable(&TIMER_1);
 	/**Timer*/
 		
     // Enter main loop.

@@ -91,6 +91,7 @@ static uint8_t query_response_mode_command_1[] =   {(char)0x66,(char)0x00,(char)
 static uint8_t query_response_mode_command_2[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
 static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
 static bool usingRX_TX = false; // is using RX and TX
+//tatic bool usingRX_TX = true; // is using RX and TX
 //received_ble_data_array (FIFO)
 static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
 static uint8_t received_ble_data_length = 0;
@@ -138,14 +139,15 @@ static void led_off_all(void) {
     led_off_all_rm_led();
 }
 
-static void receive_ble_handle(uint32_t led_pin){
-	NRF_LOG_INFO("is_prefix_equal : true");
-	memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-	received_ble_data_length -= 5;	
+static void switch_mode_led(uint32_t led_pin){
 	led_off_all();	
 	nrf_gpio_pin_toggle(led_pin);
 }
-
+static void receive_ble_handle(){
+	NRF_LOG_INFO("is_prefix_equal : true");
+	memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+	received_ble_data_length -= 5;
+}
 /**
  * Function to send a mode command over BLE NUS 
  */
@@ -169,12 +171,22 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
   if (pin == MODE_UP) {    
     //nrf_gpio_pin_toggle(RM_LED1);
+		
     // Send mode command 2
     send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+		
+    nrf_delay_ms(500); // Delay for 500ms
+		
+    send_mode_cmd(mode_query, sizeof(mode_query));
   } else if (pin == MODE_DOWN) {
     //nrf_gpio_pin_toggle(RM_LED2);
+		
     // Send mode command 3
     send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+		
+    nrf_delay_ms(500); // Delay for 500ms
+		
+    send_mode_cmd(mode_query, sizeof(mode_query));
   }
 }
 
@@ -314,22 +326,22 @@ bool is_prefix_equal(uint8_t* arr1, uint8_t* arr2) {
  */
 char is_equal_command( uint8_t* received_ble_data_array) {
 	if(is_prefix_equal(mode_command_1,received_ble_data_array)){
-      return '1'; 
+      return 'm'; 
 	}
 	if(is_prefix_equal(mode_command_2,received_ble_data_array)){
-      return '2'; 
+      return 'm'; 
 	}
 	if(is_prefix_equal(mode_command_3,received_ble_data_array)){
-      return '3'; 
+      return 'm'; 
 	}
 	if(is_prefix_equal(query_response_mode_command_1,received_ble_data_array)){
-      return 'a'; 
+      return '1'; 
 	}
 	if(is_prefix_equal(query_response_mode_command_2,received_ble_data_array)){
-      return 'b'; 
+      return '2'; 
 	}
 	if(is_prefix_equal(query_response_mode_command_3,received_ble_data_array)){
-      return 'c'; 
+      return '3'; 
 	}
   return ' ';
 }
@@ -386,22 +398,24 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
                 switch ( is_equal_command(received_ble_data_array) )
                 {
                     case '1':
-												receive_ble_handle(RM_LED1);
-                        //nrf_gpio_pin_toggle(RM_LED1);
+                        receive_ble_handle();
+                        switch_mode_led(RM_LED1);
                         break;
                     case '2':
-												receive_ble_handle(RM_LED2);
-                        //nrf_gpio_pin_toggle(RM_LED2);		
+                        receive_ble_handle();
+                        switch_mode_led(RM_LED2);	
                         break;
                     case '3':
-												receive_ble_handle(RM_LED3);
-                        //nrf_gpio_pin_toggle(RM_LED3);		
+                        receive_ble_handle();
+                        switch_mode_led(RM_LED3);		
+                        break;
+                    case 'm': //mode_command_1 or mode_command_2 or mode_command_3
+												receive_ble_handle();		
                         break;
                     default:
                         NRF_LOG_INFO("is_prefix_equal : false");
                         memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
                         received_ble_data_length -= 1;			
-												led_off_all();				
                     }
                     //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
                     //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);

@@ -83,10 +83,13 @@
 #define MAX_RECEIVED_BLE_ARRAY_SIZE 50
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
-static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(char)0x00}; 
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
 static uint8_t mode_command_2[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
 static uint8_t mode_command_3[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(char)0x00}; 
+static uint8_t query_response_mode_command_1[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
+static uint8_t query_response_mode_command_2[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
+static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
 static bool usingRX_TX = false; // is using RX and TX
 //received_ble_data_array (FIFO)
 static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
@@ -103,6 +106,45 @@ static ble_uuid_t m_adv_uuids[]          =                                      
 {
     {BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}
 };
+
+static void led_blink(void) {
+    //LED blink  
+    for(int i = 0; i <6; i++) {
+        nrf_gpio_pin_toggle(RM_LED1);
+        nrf_gpio_pin_toggle(RM_LED2);
+        nrf_gpio_pin_toggle(RM_LED3);
+        nrf_gpio_pin_toggle(BLE_LED);
+        nrf_gpio_pin_toggle(MODE_LED1);
+        nrf_gpio_pin_toggle(MODE_LED2);
+        nrf_gpio_pin_toggle(MODE_LED3);
+        nrf_delay_ms(200);
+    }
+}
+
+static void led_off_all_mode_led(void) {
+    nrf_gpio_pin_set(MODE_LED1); // Turn off LED
+    nrf_gpio_pin_set(MODE_LED2); // Turn off LED
+    nrf_gpio_pin_set(MODE_LED3); // Turn off LED
+}
+static void led_off_all_rm_led(void) {
+    nrf_gpio_pin_set(RM_LED1); // Turn off LED
+    nrf_gpio_pin_set(RM_LED2); // Turn off LED
+    nrf_gpio_pin_set(RM_LED3); // Turn off LED
+}
+static void led_off_all(void) {
+    //Turn off all LED
+    //nrf_gpio_pin_set(BLE_LED); // Turn off LED
+    led_off_all_mode_led();
+    led_off_all_rm_led();
+}
+
+static void receive_ble_handle(uint32_t led_pin){
+	NRF_LOG_INFO("is_prefix_equal : true");
+	memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+	received_ble_data_length -= 5;	
+	led_off_all();	
+	nrf_gpio_pin_toggle(led_pin);
+}
 
 /**
  * Function to send a mode command over BLE NUS 
@@ -270,12 +312,24 @@ bool is_prefix_equal(uint8_t* arr1, uint8_t* arr2) {
 
  * @return `'1'` if the array is equal to `mode_command_1`, `'2'` if the array is equal to `mode_command_2`, or `' '` otherwise.
  */
-char is_equal_command( uint8_t* arr2) {
-	if(is_prefix_equal(mode_command_1,arr2)){
+char is_equal_command( uint8_t* received_ble_data_array) {
+	if(is_prefix_equal(mode_command_1,received_ble_data_array)){
       return '1'; 
 	}
-	if(is_prefix_equal(mode_command_2,arr2)){
+	if(is_prefix_equal(mode_command_2,received_ble_data_array)){
       return '2'; 
+	}
+	if(is_prefix_equal(mode_command_3,received_ble_data_array)){
+      return '3'; 
+	}
+	if(is_prefix_equal(query_response_mode_command_1,received_ble_data_array)){
+      return 'a'; 
+	}
+	if(is_prefix_equal(query_response_mode_command_2,received_ble_data_array)){
+      return 'b'; 
+	}
+	if(is_prefix_equal(query_response_mode_command_3,received_ble_data_array)){
+      return 'c'; 
 	}
   return ' ';
 }
@@ -332,21 +386,22 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
                 switch ( is_equal_command(received_ble_data_array) )
                 {
                     case '1':
-                        NRF_LOG_INFO("is_prefix_equal : true");
-                        memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-                        received_ble_data_length -= 5;	
-                        nrf_gpio_pin_toggle(RM_LED2);
+												receive_ble_handle(RM_LED1);
+                        //nrf_gpio_pin_toggle(RM_LED1);
                         break;
                     case '2':
-                        NRF_LOG_INFO("is_prefix_equal : true");
-                        memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-                        received_ble_data_length -= 5;		
-                        nrf_gpio_pin_toggle(RM_LED2);		
+												receive_ble_handle(RM_LED2);
+                        //nrf_gpio_pin_toggle(RM_LED2);		
+                        break;
+                    case '3':
+												receive_ble_handle(RM_LED3);
+                        //nrf_gpio_pin_toggle(RM_LED3);		
                         break;
                     default:
                         NRF_LOG_INFO("is_prefix_equal : false");
                         memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
-                        received_ble_data_length -= 1;						
+                        received_ble_data_length -= 1;			
+												led_off_all();				
                     }
                     //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
                     //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
@@ -837,29 +892,6 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
-void led_test_and_turn_off(void) {
-    //LED test  
-    for(int i = 0; i <6; i++) {
-        nrf_gpio_pin_toggle(RM_LED1);
-        nrf_gpio_pin_toggle(RM_LED2);
-        nrf_gpio_pin_toggle(RM_LED3);
-        nrf_gpio_pin_toggle(BLE_LED);
-        nrf_gpio_pin_toggle(MODE_LED1);
-        nrf_gpio_pin_toggle(MODE_LED2);
-        nrf_gpio_pin_toggle(MODE_LED3);
-        nrf_delay_ms(200);
-    }
-    //Turn off LED
-    nrf_gpio_pin_set(RM_LED1); // Turn off LED
-    nrf_gpio_pin_set(RM_LED2); // Turn off LED
-    nrf_gpio_pin_set(RM_LED3); // Turn off LED
-    nrf_gpio_pin_set(BLE_LED); // Turn off LED
-    nrf_gpio_pin_set(MODE_LED1); // Turn off LED
-    nrf_gpio_pin_set(MODE_LED2); // Turn off LED
-    nrf_gpio_pin_set(MODE_LED3); // Turn off LED
-}
-
-
 /**@brief Application main function.
  */
 int main(void)
@@ -885,8 +917,9 @@ int main(void)
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 
-    led_test_and_turn_off();
-
+    led_blink(); 
+		led_off_all();
+		
     // Enter main loop.
     for (;;)
     {

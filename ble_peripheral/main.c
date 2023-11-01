@@ -143,9 +143,14 @@ static void switch_mode_led(uint32_t led_pin){
 	led_off_all();	
 	nrf_gpio_pin_toggle(led_pin);
 }
-static void receive_ble_handle(){
+/*static void receive_ble_handle(){
 	NRF_LOG_INFO("is_prefix_equal : true");
 	memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+	received_ble_data_length -= 5;
+}*/
+static void received_ble_data_array_handle(uint8_t *dst, uint8_t *src, uint8_t len) {
+	//NRF_LOG_INFO("received_ble_data_array_handle");
+    memmove(dst, src, len);
 	received_ble_data_length -= 5;
 }
 /**
@@ -387,7 +392,7 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
 {
     if (p_evt->type == BLE_NUS_EVT_RX_DATA)
     {
-        uint32_t err_code;
+        //uint32_t err_code;
         //NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
         //NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
         handle_received_nus_data(p_evt);
@@ -398,24 +403,29 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
                 switch ( is_equal_command(received_ble_data_array) )
                 {
                     case '1':
-                        receive_ble_handle();
+                        //NRF_LOG_INFO("is_equal_command : 1");
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
                         switch_mode_led(RM_LED1);
                         break;
                     case '2':
-                        receive_ble_handle();
+                        //NRF_LOG_INFO("is_equal_command : 2");
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
                         switch_mode_led(RM_LED2);	
                         break;
                     case '3':
-                        receive_ble_handle();
+                        //NRF_LOG_INFO("is_equal_command : 3");
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
                         switch_mode_led(RM_LED3);		
                         break;
-                    case 'm': //mode_command_1 or mode_command_2 or mode_command_3
-												receive_ble_handle();		
+                    case 'm': //mode_command_1 or mode_command_2 or mode_command_3 
+                        //NRF_LOG_INFO("is_equal_command : m");
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
                         break;
                     default:
-                        NRF_LOG_INFO("is_prefix_equal : false");
-                        memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
-                        received_ble_data_length -= 1;			
+                        //NRF_LOG_INFO("is_equal_command : false");
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
+                        //memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
+                        //received_ble_data_length -= 1;			
                     }
                     //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
                     //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);

@@ -989,7 +989,7 @@ int main(void)
 		led_off_all();
 		
 		/**Timer*/
-    uint32_t time_ms = 100000; //Time(in miliseconds) between consecutive compare events.
+    uint32_t time_ms = 500; //Time(in miliseconds) between consecutive compare events.
     uint32_t time_ticks;
     uint32_t err_code = NRF_SUCCESS;
     //Configure TIMER_4 for generating simple light effect - leds on board will invert his state one after the other.

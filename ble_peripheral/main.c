@@ -86,6 +86,8 @@
 #define MAX_RECEIVED_BLE_ARRAY_SIZE 50
 
 const nrf_drv_timer_t TIMER_4 = NRF_DRV_TIMER_INSTANCE(4);
+//APP_TIMER_DEF(m_repeated_timer_id);    
+APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to light LED 2. */
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
@@ -95,11 +97,23 @@ static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(cha
 static uint8_t query_response_mode_command_1[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
 static uint8_t query_response_mode_command_2[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
 static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+
 //static bool usingRX_TX_for_debug = false; // is using RX and TX
 static bool usingRX_TX_for_debug = true; // is using RX and TX
+
+static bool gwell_debug = true;
+//static bool gwell_debug = false;
+
 //received_ble_data_array (FIFO)
 static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
 static uint8_t received_ble_data_length = 0;
+static uint32_t timeout = 0; //timer
+static uint32_t query_mode_before_mode_switch = 200;//million second(ms)
+
+//mode up / down2
+static bool is_left_side = true;
+static int mode_status = 1;					//1,2,3,0(0:unknown)
+static char mode_button =' '; //' '  'u'  'd'
 
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                   /**< BLE NUS service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
@@ -118,9 +132,6 @@ static ble_uuid_t m_adv_uuids[]          =                                      
  */
 void timer_4_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
-    //static uint32_t i;
-    //uint32_t led_to_invert = ((i++) % LEDS_NUMBER);
-
     switch (event_type)
     {
 			case NRF_TIMER_EVENT_COMPARE0:
@@ -198,28 +209,40 @@ static void send_mode_cmd(uint8_t *data, uint16_t length)
 }
 
 /**
- * @brief Interrupt handler for wakeup pins
+ * @brief Interrupt handler for button click
  */
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
-{
-  if (pin == MODE_UP) {    
-    //nrf_gpio_pin_toggle(RM_LED1);
+{  
 		
-    // Send mode command 2
-    send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+  uint32_t err_code;
+  if (pin == MODE_UP){
+		mode_button='u';
+		send_mode_cmd(mode_query, sizeof(mode_query));
 		
-    nrf_delay_ms(500); // Delay for 500ms
+    //Send mode command 2
+//    send_mode_cmd(mode_command_2, sizeof(mode_command_2));
 		
-    send_mode_cmd(mode_query, sizeof(mode_query));
-  } else if (pin == MODE_DOWN) {
-    //nrf_gpio_pin_toggle(RM_LED2);
-		
+//		err_code = app_timer_start(m_repeated_timer_id, APP_TIMER_TICKS(200), NULL);
+		timeout += query_mode_before_mode_switch;
+		err_code = app_timer_start(m_single_shot_timer_id, APP_TIMER_TICKS(timeout), NULL);
+		APP_ERROR_CHECK(err_code);
+				
+    //nrf_delay_ms(500); // Delay for 500ms
+    //send_mode_cmd(mode_query, sizeof(mode_query));
+  } else if (pin == MODE_DOWN) {	
+		mode_button='d';
+		send_mode_cmd(mode_query, sizeof(mode_query));
+			
     // Send mode command 3
-    send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+    //send_mode_cmd(mode_command_3, sizeof(mode_command_3));
 		
-    nrf_delay_ms(500); // Delay for 500ms
+//		err_code = app_timer_start(m_repeated_timer_id, APP_TIMER_TICKS(200), NULL);
+		timeout += query_mode_before_mode_switch;
+		err_code = app_timer_start(m_single_shot_timer_id, APP_TIMER_TICKS(timeout), NULL);
+		APP_ERROR_CHECK(err_code);
 		
-    send_mode_cmd(mode_query, sizeof(mode_query));
+    //nrf_delay_ms(500); // Delay for 500ms
+    //send_mode_cmd(mode_query, sizeof(mode_query));
   }
 }
 
@@ -243,13 +266,13 @@ static void gpio_init(void)
 
     nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(false);     //Configure to generate interrupt and wakeup on pin signal low. "false" means that gpiote will use the PORT event, which is low power, i.e. does not add any noticable current consumption (<<1uA). Setting this to "true" will make the gpiote module use GPIOTE->IN events which add ~8uA for nRF52 and ~1mA for nRF51.
 	
-	//MODE_UP - Configure sense input pin to enable wakeup and interrupt on button press.
+		//MODE_UP - Configure sense input pin to enable wakeup and interrupt on button press.
     in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
     err_code = nrf_drv_gpiote_in_init(MODE_UP, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
     nrf_drv_gpiote_in_event_enable(MODE_UP, true);                            //Enable event and interrupt for the wakeup pin
 
-	//MODE_DOWN - Configure sense input pin to enable wakeup and interrupt on button press.
+		//MODE_DOWN - Configure sense input pin to enable wakeup and interrupt on button press.
     in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
     err_code = nrf_drv_gpiote_in_init(MODE_DOWN, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
@@ -436,7 +459,7 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
             }
         }
 				
-		//NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
+				//NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
         //NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
         handle_received_nus_data(p_evt);
         //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
@@ -447,18 +470,21 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
                 {
                     case '1':
                         //NRF_LOG_INFO("is_equal_command : 1");
+												mode_status = 1;
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-                        switch_mode_led(RM_LED1);
+                        switch_mode_led(RM_LED3);
                         break;
                     case '2':
                         //NRF_LOG_INFO("is_equal_command : 2");
+												mode_status = 2;
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
                         switch_mode_led(RM_LED2);	
                         break;
                     case '3':
                         //NRF_LOG_INFO("is_equal_command : 3");
+												mode_status = 3;
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-                        switch_mode_led(RM_LED3);		
+                        switch_mode_led(RM_LED1);		
                         break;
                     case 'm': //mode_command_1 or mode_command_2 or mode_command_3 
                         //NRF_LOG_INFO("is_equal_command : m");
@@ -959,6 +985,101 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
+/**@brief Timeout handler for the repeated timer.
+ */
+/*static void repeated_timer_handler(void * p_context)
+{
+	nrf_gpio_pin_toggle(RM_LED1);
+}*/
+
+static void query_mode(void){
+	nrf_delay_ms(query_mode_before_mode_switch);		
+	send_mode_cmd(mode_query, sizeof(mode_query));
+}
+static void single_shot_timer_handler(void * p_context)
+{
+/*	NRF_LOG_INFO("mode_status:%d",mode_status);
+	NRF_LOG_INFO("mode_button:%c",mode_button);
+	if(is_left_side){NRF_LOG_INFO("is_left_side:true");}
+	else{NRF_LOG_INFO("is_left_side:false");}	*/
+	switch(mode_status){
+		case 1:
+			if(is_left_side){
+				if(mode_button=='u'){
+					//Send mode command 2
+					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+					query_mode();
+				}
+			}else{//right side
+				if(mode_button=='d'){
+					//Send mode command 2
+					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+					query_mode();
+				}
+			}
+			break;
+		case 2:
+			if(is_left_side){
+				if(mode_button=='u'){
+					//Send mode command 3
+					send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+					query_mode();
+				}
+				if(mode_button=='d'){
+					//Send mode command 1
+					send_mode_cmd(mode_command_1, sizeof(mode_command_1));
+					query_mode();
+				}
+			}else{//right side
+				if(mode_button=='u'){
+					//Send mode command 1
+					send_mode_cmd(mode_command_1, sizeof(mode_command_1));
+					query_mode();
+				}
+				if(mode_button=='d'){
+					//Send mode command 3
+					send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+					query_mode();
+				}
+			}
+			break;
+		case 3:
+			if(is_left_side){
+				if(mode_button=='d'){
+					//Send mode command 2
+					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+					query_mode();
+				}
+			}else{//right side
+				if(mode_button=='u'){
+					//Send mode command 2
+					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+					query_mode();
+				}
+			}
+			break;
+		default:
+			//donothing
+			break;
+	}
+}
+
+/**@brief Create timers.
+ */
+static void create_timers()
+{
+    ret_code_t err_code;
+
+    // Create timers
+/*    err_code = app_timer_create(&m_repeated_timer_id,
+                                APP_TIMER_MODE_REPEATED,
+                                repeated_timer_handler);*/
+	err_code = app_timer_create(&m_single_shot_timer_id,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                single_shot_timer_handler);
+    APP_ERROR_CHECK(err_code);
+}
+
 /**@brief Application main function.
  */
 int main(void)
@@ -984,12 +1105,8 @@ int main(void)
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 		
-		//LED test
-    led_blink();
-		led_off_all();
-		
 		/**Timer*/
-    uint32_t time_ms = 500; //Time(in miliseconds) between consecutive compare events.
+ /*   uint32_t time_ms = 500; //Time(in miliseconds) between consecutive compare events.
     uint32_t time_ticks;
     uint32_t err_code = NRF_SUCCESS;
     //Configure TIMER_4 for generating simple light effect - leds on board will invert his state one after the other.
@@ -999,9 +1116,19 @@ int main(void)
     time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_4, time_ms);
     nrf_drv_timer_extended_compare(
          &TIMER_4, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
-    nrf_drv_timer_enable(&TIMER_4);
+    nrf_drv_timer_enable(&TIMER_4);*/
 		/**Timer*/
 		
+		create_timers();
+		
+		
+		//LED test
+    led_blink();
+		led_off_all();
+		
+		//todo check BLE connected
+		query_mode();
+				
     // Enter main loop.
     for (;;)
     {

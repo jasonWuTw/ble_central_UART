@@ -85,7 +85,7 @@
 #define CELL_V 29	// P0.29
 #define MAX_RECEIVED_BLE_ARRAY_SIZE 50
 
-const nrf_drv_timer_t TIMER_1 = NRF_DRV_TIMER_INSTANCE(1);
+const nrf_drv_timer_t TIMER_1 = NRF_DRV_TIMER_INSTANCE(4);
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
@@ -95,8 +95,8 @@ static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(cha
 static uint8_t query_response_mode_command_1[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
 static uint8_t query_response_mode_command_2[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
 static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
-static bool usingRX_TX = false; // is using RX and TX
-//tatic bool usingRX_TX = true; // is using RX and TX
+//static bool usingRX_TX_for_debug = false; // is using RX and TX
+static bool usingRX_TX_for_debug = true; // is using RX and TX
 //received_ble_data_array (FIFO)
 static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
 static uint8_t received_ble_data_length = 0;
@@ -123,16 +123,16 @@ void timer_1_event_handler(nrf_timer_event_t event_type, void* p_context)
 
     switch (event_type)
     {
-        case NRF_TIMER_EVENT_COMPARE0:
-			//NRF_LOG_INFO("NRF_TIMER_EVENT_COMPARE0............."); 
-            //bsp_board_led_invert(led_to_invert);
-			//nrf_gpio_pin_toggle(RM_LED1);
-            break;
-
-        default:
-			//NRF_LOG_INFO("default............"); 
-            //Do nothing.
-            break;
+			case NRF_TIMER_EVENT_COMPARE0:
+				//NRF_LOG_INFO("NRF_TIMER_EVENT_COMPARE0............."); 
+				//bsp_board_led_invert(led_to_invert);
+				//nrf_gpio_pin_toggle(RM_LED1);
+			break;
+			
+			default:
+				//NRF_LOG_INFO("default............");
+				//Do nothing.
+			break;
     }
 }
 
@@ -420,8 +420,23 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
 {
     if (p_evt->type == BLE_NUS_EVT_RX_DATA)
     {
-        //uint32_t err_code;
-        //NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
+        uint32_t err_code;
+        if(usingRX_TX_for_debug){
+            for (uint32_t i = 0; i < p_evt->params.rx_data.length; i++)
+            {
+                    do
+                    {
+                            err_code = app_uart_put(p_evt->params.rx_data.p_data[i]);
+                            if ((err_code != NRF_SUCCESS) && (err_code != NRF_ERROR_BUSY))
+                            {
+                                    NRF_LOG_ERROR("Failed receiving NUS message. Error 0x%x. ", err_code);
+                                    APP_ERROR_CHECK(err_code);
+                            }
+                    } while (err_code == NRF_ERROR_BUSY);
+            }
+        }
+				
+		//NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
         //NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
         handle_received_nus_data(p_evt);
         //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
@@ -776,7 +791,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
     switch (p_event->evt_type)
     {
         case APP_UART_DATA_READY:
-            if(usingRX_TX){
+            if(usingRX_TX_for_debug){
                 UNUSED_VARIABLE(app_uart_get(&data_array[index]));
                 index++;
                 /*if ((data_array[index - 1] == '\n') ||
@@ -805,13 +820,13 @@ void uart_event_handle(app_uart_evt_t * p_event)
             break;
 
         case APP_UART_COMMUNICATION_ERROR:
-            if(usingRX_TX){
+            if(usingRX_TX_for_debug){
 							APP_ERROR_HANDLER(p_event->data.error_communication); //[NRF_ERROR_DATA_SIZE] when RT/TX no connect.
 						}
             break;
 
         case APP_UART_FIFO_ERROR:
-            if(usingRX_TX){
+            if(usingRX_TX_for_debug){
 							APP_ERROR_HANDLER(p_event->data.error_code);
 						}
             break;

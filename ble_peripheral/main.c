@@ -87,7 +87,8 @@
 
 const nrf_drv_timer_t TIMER_4 = NRF_DRV_TIMER_INSTANCE(4);
 //APP_TIMER_DEF(m_repeated_timer_id);    
-APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to light LED 2. */
+APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to mode switch. */
+APP_TIMER_DEF(m_single_shot_timer_id_ble_connected_query_mode);  /**< Handler for single shot timer used to query mode status after BLE connected. */
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
@@ -107,12 +108,14 @@ static bool gwell_debug = true;
 //received_ble_data_array (FIFO)
 static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
 static uint8_t received_ble_data_length = 0;
-static uint32_t timeout = 0; //timer
-static uint32_t query_mode_before_mode_switch = 200;//million second(ms)
+static uint32_t timeout_mode = 0; //timer;
+static uint32_t timeout_ble_connected = 0; //timer
+static uint32_t query_mode_before_mode_switch = 100;//million second(ms)
+static uint32_t query_mode_after_ble_connected = 500;//million second(ms)
 
 //mode up / down2
 static bool is_left_side = true;
-static int mode_status = 1;					//1,2,3,0(0:unknown)
+static int mode_status = 0;					//1,2,3,0(0:unknown)
 static char mode_button =' '; //' '  'u'  'd'
 
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                   /**< BLE NUS service instance. */
@@ -157,7 +160,7 @@ static void led_blink(void) {
         nrf_gpio_pin_toggle(MODE_LED1);
         nrf_gpio_pin_toggle(MODE_LED2);
         nrf_gpio_pin_toggle(MODE_LED3);
-        nrf_delay_ms(200);
+        nrf_delay_ms(50);
     }
 }
 
@@ -208,41 +211,34 @@ static void send_mode_cmd(uint8_t *data, uint16_t length)
   }
 }
 
+void ble_query_timer_enabled(void) {
+	//NRF_LOG_INFO("ble_query_timer_enabled................");
+	uint32_t err_code;
+	timeout_ble_connected += query_mode_after_ble_connected;
+	err_code = app_timer_start(m_single_shot_timer_id_ble_connected_query_mode, APP_TIMER_TICKS(timeout_ble_connected), NULL);
+	APP_ERROR_CHECK(err_code);
+}
+
+void mode_timer_enabled(void) {
+	uint32_t err_code;
+	timeout_mode += query_mode_before_mode_switch;
+	err_code = app_timer_start(m_single_shot_timer_id, APP_TIMER_TICKS(timeout_mode), NULL);
+	APP_ERROR_CHECK(err_code);
+}
+
 /**
  * @brief Interrupt handler for button click
  */
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {  
-		
-  uint32_t err_code;
   if (pin == MODE_UP){
-		mode_button='u';
-		send_mode_cmd(mode_query, sizeof(mode_query));
-		
-    //Send mode command 2
-//    send_mode_cmd(mode_command_2, sizeof(mode_command_2));
-		
-//		err_code = app_timer_start(m_repeated_timer_id, APP_TIMER_TICKS(200), NULL);
-		timeout += query_mode_before_mode_switch;
-		err_code = app_timer_start(m_single_shot_timer_id, APP_TIMER_TICKS(timeout), NULL);
-		APP_ERROR_CHECK(err_code);
-				
-    //nrf_delay_ms(500); // Delay for 500ms
-    //send_mode_cmd(mode_query, sizeof(mode_query));
+    mode_button='u';
+    send_mode_cmd(mode_query, sizeof(mode_query));
+    mode_timer_enabled();
   } else if (pin == MODE_DOWN) {	
-		mode_button='d';
-		send_mode_cmd(mode_query, sizeof(mode_query));
-			
-    // Send mode command 3
-    //send_mode_cmd(mode_command_3, sizeof(mode_command_3));
-		
-//		err_code = app_timer_start(m_repeated_timer_id, APP_TIMER_TICKS(200), NULL);
-		timeout += query_mode_before_mode_switch;
-		err_code = app_timer_start(m_single_shot_timer_id, APP_TIMER_TICKS(timeout), NULL);
-		APP_ERROR_CHECK(err_code);
-		
-    //nrf_delay_ms(500); // Delay for 500ms
-    //send_mode_cmd(mode_query, sizeof(mode_query));
+    mode_button='d';
+    send_mode_cmd(mode_query, sizeof(mode_query));
+    mode_timer_enabled();
   }
 }
 
@@ -266,26 +262,26 @@ static void gpio_init(void)
 
     nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(false);     //Configure to generate interrupt and wakeup on pin signal low. "false" means that gpiote will use the PORT event, which is low power, i.e. does not add any noticable current consumption (<<1uA). Setting this to "true" will make the gpiote module use GPIOTE->IN events which add ~8uA for nRF52 and ~1mA for nRF51.
 	
-		//MODE_UP - Configure sense input pin to enable wakeup and interrupt on button press.
+	//MODE_UP - Configure sense input pin to enable wakeup and interrupt on button press.
     in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
     err_code = nrf_drv_gpiote_in_init(MODE_UP, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
     nrf_drv_gpiote_in_event_enable(MODE_UP, true);                            //Enable event and interrupt for the wakeup pin
 
-		//MODE_DOWN - Configure sense input pin to enable wakeup and interrupt on button press.
+	//MODE_DOWN - Configure sense input pin to enable wakeup and interrupt on button press.
     in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
     err_code = nrf_drv_gpiote_in_init(MODE_DOWN, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
     nrf_drv_gpiote_in_event_enable(MODE_DOWN, true); 
 		
-		//other
+	//other
     nrf_gpio_cfg_output(RM_LED1);  
-		nrf_gpio_cfg_output(RM_LED2);
-		nrf_gpio_cfg_output(RM_LED3); 
-		nrf_gpio_cfg_output(BLE_LED); 
-		nrf_gpio_cfg_output(MODE_LED1); 
-		nrf_gpio_cfg_output(MODE_LED2); 
-		nrf_gpio_cfg_output(MODE_LED3); 
+    nrf_gpio_cfg_output(RM_LED2);
+    nrf_gpio_cfg_output(RM_LED3); 
+    nrf_gpio_cfg_output(BLE_LED); 
+    nrf_gpio_cfg_output(MODE_LED1); 
+    nrf_gpio_cfg_output(MODE_LED2); 
+    nrf_gpio_cfg_output(MODE_LED3); 
     nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_PULLUP);
 }
 
@@ -638,6 +634,10 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
+static void query_mode(void){
+	//nrf_delay_ms(query_mode_before_mode_switch);		
+	send_mode_cmd(mode_query, sizeof(mode_query));
+}
 
 /**@brief Function for handling BLE events.
  *
@@ -743,6 +743,8 @@ void gatt_evt_handler(nrf_ble_gatt_t * p_gatt, nrf_ble_gatt_evt_t const * p_evt)
     {
         m_ble_nus_max_data_len = p_evt->params.att_mtu_effective - OPCODE_LENGTH - HANDLE_LENGTH;
         NRF_LOG_INFO("Data len is set to 0x%X(%d)", m_ble_nus_max_data_len, m_ble_nus_max_data_len);
+				
+        ble_query_timer_enabled();
     }
     NRF_LOG_DEBUG("ATT MTU exchange completed. central 0x%x peripheral 0x%x",
                   p_gatt->att_mtu_desired_central,
@@ -992,11 +994,13 @@ static void advertising_start(void)
 	nrf_gpio_pin_toggle(RM_LED1);
 }*/
 
-static void query_mode(void){
-	nrf_delay_ms(query_mode_before_mode_switch);		
-	send_mode_cmd(mode_query, sizeof(mode_query));
+
+static void single_shot_timer_handler_ble_connected_query_mode(void * p_context)
+{
+	query_mode();
 }
-static void single_shot_timer_handler(void * p_context)
+
+static void single_shot_timer_handler_mode_switch(void * p_context)
 {
 /*	NRF_LOG_INFO("mode_status:%d",mode_status);
 	NRF_LOG_INFO("mode_button:%c",mode_button);
@@ -1068,16 +1072,20 @@ static void single_shot_timer_handler(void * p_context)
  */
 static void create_timers()
 {
-    ret_code_t err_code;
-
-    // Create timers
+	ret_code_t err_code;
+	// Create timers
 /*    err_code = app_timer_create(&m_repeated_timer_id,
                                 APP_TIMER_MODE_REPEATED,
                                 repeated_timer_handler);*/
 	err_code = app_timer_create(&m_single_shot_timer_id,
                                 APP_TIMER_MODE_SINGLE_SHOT,
-                                single_shot_timer_handler);
-    APP_ERROR_CHECK(err_code);
+                                single_shot_timer_handler_mode_switch);
+	
+	
+	err_code = app_timer_create(&m_single_shot_timer_id_ble_connected_query_mode,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                single_shot_timer_handler_ble_connected_query_mode);
+	APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Application main function.
@@ -1085,9 +1093,13 @@ static void create_timers()
 int main(void)
 {
     bool erase_bonds;
-
-    // Initialize.
     gpio_init();
+
+    //LED test
+    led_blink();
+    led_off_all();
+		
+    // Initialize.
     uart_init();
     log_init();
     timers_init();
@@ -1121,10 +1133,6 @@ int main(void)
 		
 		create_timers();
 		
-		
-		//LED test
-    led_blink();
-		led_off_all();
 		
 		//todo check BLE connected
 		query_mode();

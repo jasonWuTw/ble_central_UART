@@ -72,7 +72,9 @@
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
 
 /** gwell test zone*/
-#define MODE_LED1 6 // P0.06
+#define BLE_LED 6	// P0.17
+
+#define MODE_LED1 17 // P0.06
 #define MODE_LED2 7 // P0.07
 #define MODE_LED3 8 // P0.08
 
@@ -86,6 +88,7 @@
 #define MODE_LED1 6
 #define MODE_LED2 7
 #define MODE_LED3 8
+#define BLE_LED 17 // P0.17
 #define RM_LED1 22
 #define RM_LED2 23
 #define RM_LED3 24
@@ -96,12 +99,11 @@
 #define POWER_ON 3	//PO.03
 #define MODE_UP 4	//PO.04
 #define MODE_DOWN 5	//PO.05
-#define BLE_LED 17 // P0.17
 #define CELL_V 29	// P0.29
 #define MAX_RECEIVED_BLE_ARRAY_SIZE 50
 
 const nrf_drv_timer_t TIMER_4 = NRF_DRV_TIMER_INSTANCE(4);
-//APP_TIMER_DEF(m_repeated_timer_id);    
+APP_TIMER_DEF(m_repeated_timer_id_ble_led_blink);
 APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to mode switch. */
 APP_TIMER_DEF(m_single_shot_timer_id_ble_connected_query_mode);  /**< Handler for single shot timer used to query mode status after BLE connected. */
 
@@ -122,11 +124,15 @@ static bool usingRX_TX_for_debug = true; // is using RX and TX
 
 //received_ble_data_array (FIFO)
 static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
-static uint8_t received_ble_data_length = 0;
-static uint32_t timeout_mode = 0; //timer;
-static uint32_t timeout_ble_connected = 0; //timer
-static uint32_t query_mode_before_mode_switch = 50;//million second(ms)
-static uint32_t query_mode_after_ble_connected = 500;//million second(ms)
+static int received_ble_data_length = 0;
+static int timeout_mode = 0; //timer;
+static int timeout_ble_connected = 0; //timer
+static int query_mode_before_mode_switch = 50;//million second(ms)
+static int query_mode_after_ble_connected = 500;//million second(ms)
+static int ble_led_blink_ms = 1000;//million second(ms)
+//static int ble_led_blink_fast_ms = 200;//million second(ms)
+static bool is_GATT_EVT_ATT_MTU_UPDATED_once = false;
+
 
 //mode up / down2
 //static bool left_side_or_right_side = false;
@@ -165,18 +171,30 @@ static ble_uuid_t m_adv_uuids[]          =                                      
     }
 }*/
 
+static void turn_on_BLE_LED(void) {
+	//NRF_LOG_INFO("turn_on_BLE_LED............");
+	nrf_gpio_pin_clear(BLE_LED);
+}
+
+static void blink_BLE_LED(void) {
+	//nrf_gpio_pin_set(BLE_LED);
+	uint32_t err_code;
+	err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL);
+	APP_ERROR_CHECK(err_code);
+}
+
 static void led_blink(void) {
-    //LED blink  
-    for(int i = 0; i <6; i++) {
-        nrf_gpio_pin_toggle(RM_LED1);
-        nrf_gpio_pin_toggle(RM_LED2);
-        nrf_gpio_pin_toggle(RM_LED3);
-        nrf_gpio_pin_toggle(BLE_LED);
-        nrf_gpio_pin_toggle(MODE_LED1);
-        nrf_gpio_pin_toggle(MODE_LED2);
-        nrf_gpio_pin_toggle(MODE_LED3);
-        nrf_delay_ms(50);
-    }
+	//LED blink  
+	for(int i = 0; i <6; i++) {
+		nrf_gpio_pin_toggle(RM_LED1);
+		nrf_gpio_pin_toggle(RM_LED2);
+		nrf_gpio_pin_toggle(RM_LED3);
+		nrf_gpio_pin_toggle(BLE_LED);
+		nrf_gpio_pin_toggle(MODE_LED1);
+		nrf_gpio_pin_toggle(MODE_LED2);
+		nrf_gpio_pin_toggle(MODE_LED3);
+		nrf_delay_ms(50);
+	}
 }
 
 static void led_off_all_mode_led(void) {
@@ -191,13 +209,14 @@ static void led_off_all_rm_led(void) {
 }
 static void led_off_all(void) {
     //Turn off all LED
-    //nrf_gpio_pin_set(BLE_LED); // Turn off LED
+    nrf_gpio_pin_set(BLE_LED); // Turn off LED
     led_off_all_mode_led();
     led_off_all_rm_led();
 }
 
 static void switch_mode_led(uint32_t led_pin){
-	led_off_all();	
+	led_off_all_mode_led();
+	led_off_all_rm_led();
 	nrf_gpio_pin_toggle(led_pin);
 }
 /*static void receive_ble_handle(){
@@ -678,6 +697,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             NRF_LOG_INFO("Disconnected");
             // LED indication will be changed when advertising starts.
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
+						
+            blink_BLE_LED();
+            led_off_all();
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -759,7 +781,12 @@ void gatt_evt_handler(nrf_ble_gatt_t * p_gatt, nrf_ble_gatt_evt_t const * p_evt)
         m_ble_nus_max_data_len = p_evt->params.att_mtu_effective - OPCODE_LENGTH - HANDLE_LENGTH;
         NRF_LOG_INFO("Data len is set to 0x%X(%d)", m_ble_nus_max_data_len, m_ble_nus_max_data_len);
 				
+        is_GATT_EVT_ATT_MTU_UPDATED_once = true;
         ble_query_timer_enabled();
+        uint32_t err_code;
+        err_code = app_timer_stop(m_repeated_timer_id_ble_led_blink);  
+        APP_ERROR_CHECK(err_code);
+        turn_on_BLE_LED();
     }
     NRF_LOG_DEBUG("ATT MTU exchange completed. central 0x%x peripheral 0x%x",
                   p_gatt->att_mtu_desired_central,
@@ -1004,11 +1031,11 @@ static void advertising_start(void)
 
 /**@brief Timeout handler for the repeated timer.
  */
-/*static void repeated_timer_handler(void * p_context)
+static void single_shot_timer_handler_ble_led_blink(void * p_context)
 {
-	nrf_gpio_pin_toggle(RM_LED1);
-}*/
-
+	//NRF_LOG_INFO("single_shot_timer_handler_ble_led_blink............");
+	nrf_gpio_pin_toggle(BLE_LED);
+}
 
 static void single_shot_timer_handler_ble_connected_query_mode(void * p_context)
 {
@@ -1067,10 +1094,14 @@ static void create_timers()
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 single_shot_timer_handler_mode_switch);
 	
-	
 	err_code = app_timer_create(&m_single_shot_timer_id_ble_connected_query_mode,
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 single_shot_timer_handler_ble_connected_query_mode);
+	
+	err_code = app_timer_create(&m_repeated_timer_id_ble_led_blink,
+                                APP_TIMER_MODE_REPEATED,
+                                single_shot_timer_handler_ble_led_blink);
+	
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -1103,27 +1134,15 @@ int main(void)
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 		
-		/**Timer*/
- /*   uint32_t time_ms = 500; //Time(in miliseconds) between consecutive compare events.
-    uint32_t time_ticks;
-    uint32_t err_code = NRF_SUCCESS;
-    //Configure TIMER_4 for generating simple light effect - leds on board will invert his state one after the other.
-    nrf_drv_timer_config_t timer_cfg = NRF_DRV_TIMER_DEFAULT_CONFIG;
-    err_code = nrf_drv_timer_init(&TIMER_4, &timer_cfg, timer_4_event_handler);
-    APP_ERROR_CHECK(err_code);
-    time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_4, time_ms);
-    nrf_drv_timer_extended_compare(
-         &TIMER_4, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
-    nrf_drv_timer_enable(&TIMER_4);*/
-		/**Timer*/
-		
+		//Timer
 		create_timers();
-		
-		
-		//todo check BLE connected
-		//query_mode();
-				
-    // Enter main loop.
+		if(!is_GATT_EVT_ATT_MTU_UPDATED_once){				
+			uint32_t err_code;
+			err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL); 
+			APP_ERROR_CHECK(err_code);
+		}
+    
+		// Enter main loop.
     for (;;)
     {
         //Enter System-on idle mode

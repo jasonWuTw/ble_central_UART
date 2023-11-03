@@ -117,7 +117,7 @@ static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)
 //static bool usingRX_TX_for_debug = false; // is using RX and TX
 static bool usingRX_TX_for_debug = true; // is using RX and TX
 
-static bool gwell_debug = true;
+//static bool gwell_debug = true;
 //static bool gwell_debug = false;
 
 //received_ble_data_array (FIFO)
@@ -129,7 +129,7 @@ static uint32_t query_mode_before_mode_switch = 50;//million second(ms)
 static uint32_t query_mode_after_ble_connected = 500;//million second(ms)
 
 //mode up / down2
-static bool left_side_or_right_side = false;
+//static bool left_side_or_right_side = false;
 static int mode_status = 0;					//1,2,3,0(0:unknown)
 static char mode_button =' '; //' '  'u'  'd'
 
@@ -1030,19 +1030,6 @@ static void single_shot_timer_handler_mode_switch(void * p_context)
 			}
 			break;
 		case 2:
-			/*if(left_side_or_right_side){
-				if(mode_button=='u'){
-					//Send mode command 3
-					send_mode_cmd(mode_command_3, sizeof(mode_command_3));
-					query_mode();
-				}
-				if(mode_button=='d'){
-					//Send mode command 1
-					send_mode_cmd(mode_command_1, sizeof(mode_command_1));
-					query_mode();
-				}
-			}else{//right side
-				*/
 				if(mode_button=='u'){
 					//Send mode command 1
 					send_mode_cmd(mode_command_1, sizeof(mode_command_1));
@@ -1053,22 +1040,13 @@ static void single_shot_timer_handler_mode_switch(void * p_context)
 					send_mode_cmd(mode_command_3, sizeof(mode_command_3));
 					query_mode();
 				}
-			//}
 			break;
 		case 3:
-			/*if(left_side_or_right_side){
-				if(mode_button=='d'){
-					//Send mode command 2
-					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
-					query_mode();
-				}*/
-			//}else{//right side
-				if(mode_button=='u'){
-					//Send mode command 2
-					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
-					query_mode();
-				}
-			//}
+			if(mode_button=='u'){
+				//Send mode command 2
+				send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+				query_mode();
+			}
 			break;
 		default:
 			//donothing
@@ -1143,7 +1121,7 @@ int main(void)
 		
 		
 		//todo check BLE connected
-		query_mode();
+		//query_mode();
 				
     // Enter main loop.
     for (;;)

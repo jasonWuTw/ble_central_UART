@@ -71,17 +71,32 @@
 #define UART_TX_BUF_SIZE                256                                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
 
+/** gwell test zone*/
+#define MODE_LED1 6 // P0.06
+#define MODE_LED2 7 // P0.07
+#define MODE_LED3 8 // P0.08
+
+#define RM_LED1 22
+#define RM_LED2 23
+#define RM_LED3 24
+/** gwell test zone*/
+
+/** production zone*/
+/*
+#define MODE_LED1 6
+#define MODE_LED2 7
+#define MODE_LED3 8
+#define RM_LED1 22
+#define RM_LED2 23
+#define RM_LED3 24
+*/
+/** production zone*/
+
 #define MCU_POWER_HOLD 2	//PO.02
 #define POWER_ON 3	//PO.03
 #define MODE_UP 4	//PO.04
 #define MODE_DOWN 5	//PO.05
-#define RM_LED1 6 // P0.06
-#define RM_LED2 7 // P0.07
-#define RM_LED3 8 // P0.08
 #define BLE_LED 17 // P0.17
-#define MODE_LED1 22	// P0.22
-#define MODE_LED2 23	// P0.23
-#define MODE_LED3 24	// P0.24
 #define CELL_V 29	// P0.29
 #define MAX_RECEIVED_BLE_ARRAY_SIZE 50
 
@@ -110,11 +125,11 @@ static uint8_t received_ble_data_array[MAX_RECEIVED_BLE_ARRAY_SIZE];
 static uint8_t received_ble_data_length = 0;
 static uint32_t timeout_mode = 0; //timer;
 static uint32_t timeout_ble_connected = 0; //timer
-static uint32_t query_mode_before_mode_switch = 100;//million second(ms)
+static uint32_t query_mode_before_mode_switch = 50;//million second(ms)
 static uint32_t query_mode_after_ble_connected = 500;//million second(ms)
 
 //mode up / down2
-static bool is_left_side = true;
+static bool left_side_or_right_side = false;
 static int mode_status = 0;					//1,2,3,0(0:unknown)
 static char mode_button =' '; //' '  'u'  'd'
 
@@ -133,7 +148,7 @@ static ble_uuid_t m_adv_uuids[]          =                                      
 /**
  * @brief Handler for timer events.
  */
-void timer_4_event_handler(nrf_timer_event_t event_type, void* p_context)
+/*void timer_4_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
     switch (event_type)
     {
@@ -148,7 +163,7 @@ void timer_4_event_handler(nrf_timer_event_t event_type, void* p_context)
 				//Do nothing.
 			break;
     }
-}
+}*/
 
 static void led_blink(void) {
     //LED blink  
@@ -468,19 +483,19 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
                         //NRF_LOG_INFO("is_equal_command : 1");
 												mode_status = 1;
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-                        switch_mode_led(RM_LED3);
+                        switch_mode_led(MODE_LED1);
                         break;
                     case '2':
                         //NRF_LOG_INFO("is_equal_command : 2");
 												mode_status = 2;
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-                        switch_mode_led(RM_LED2);	
+                        switch_mode_led(MODE_LED2);	
                         break;
                     case '3':
                         //NRF_LOG_INFO("is_equal_command : 3");
 												mode_status = 3;
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-                        switch_mode_led(RM_LED1);		
+                        switch_mode_led(MODE_LED3);		
                         break;
                     case 'm': //mode_command_1 or mode_command_2 or mode_command_3 
                         //NRF_LOG_INFO("is_equal_command : m");
@@ -1004,26 +1019,18 @@ static void single_shot_timer_handler_mode_switch(void * p_context)
 {
 /*	NRF_LOG_INFO("mode_status:%d",mode_status);
 	NRF_LOG_INFO("mode_button:%c",mode_button);
-	if(is_left_side){NRF_LOG_INFO("is_left_side:true");}
-	else{NRF_LOG_INFO("is_left_side:false");}	*/
+	if(left_side_or_right_side){NRF_LOG_INFO("left_side_or_right_side:true");}
+	else{NRF_LOG_INFO("left_side_or_right_side:false");}	*/
 	switch(mode_status){
 		case 1:
-			if(is_left_side){
-				if(mode_button=='u'){
-					//Send mode command 2
-					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
-					query_mode();
-				}
-			}else{//right side
-				if(mode_button=='d'){
-					//Send mode command 2
-					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
-					query_mode();
-				}
+			if(mode_button=='d'){
+				//Send mode command 2
+				send_mode_cmd(mode_command_2, sizeof(mode_command_2));
+				query_mode();
 			}
 			break;
 		case 2:
-			if(is_left_side){
+			/*if(left_side_or_right_side){
 				if(mode_button=='u'){
 					//Send mode command 3
 					send_mode_cmd(mode_command_3, sizeof(mode_command_3));
@@ -1035,6 +1042,7 @@ static void single_shot_timer_handler_mode_switch(void * p_context)
 					query_mode();
 				}
 			}else{//right side
+				*/
 				if(mode_button=='u'){
 					//Send mode command 1
 					send_mode_cmd(mode_command_1, sizeof(mode_command_1));
@@ -1045,22 +1053,22 @@ static void single_shot_timer_handler_mode_switch(void * p_context)
 					send_mode_cmd(mode_command_3, sizeof(mode_command_3));
 					query_mode();
 				}
-			}
+			//}
 			break;
 		case 3:
-			if(is_left_side){
+			/*if(left_side_or_right_side){
 				if(mode_button=='d'){
 					//Send mode command 2
 					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
 					query_mode();
-				}
-			}else{//right side
+				}*/
+			//}else{//right side
 				if(mode_button=='u'){
 					//Send mode command 2
 					send_mode_cmd(mode_command_2, sizeof(mode_command_2));
 					query_mode();
 				}
-			}
+			//}
 			break;
 		default:
 			//donothing

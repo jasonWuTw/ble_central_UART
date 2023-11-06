@@ -85,13 +85,13 @@
 
 /** production zone*/
 /*
-#define MODE_LED1 6
-#define MODE_LED2 7
-#define MODE_LED3 8
+#define MODE_LED1 24
+#define MODE_LED2 23
+#define MODE_LED3 22
 #define BLE_LED 17 // P0.17
-#define RM_LED1 22
-#define RM_LED2 23
-#define RM_LED3 24
+#define RM_LED1 6
+#define RM_LED2 7
+#define RM_LED3 8
 */
 /** production zone*/
 

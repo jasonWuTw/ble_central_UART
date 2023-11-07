@@ -133,9 +133,8 @@ static int ble_led_blink_ms = 1000;//million second(ms)
 //static int ble_led_blink_fast_ms = 200;//million second(ms)
 static bool is_GATT_EVT_ATT_MTU_UPDATED_once = false;
 
-
-//mode up / down2
-//static bool left_side_or_right_side = false;
+//mode up / down
+static bool left_side_or_right_side = true;
 static int mode_status = 0;					//1,2,3,0(0:unknown)
 static char mode_button =' '; //' '  'u'  'd'
 
@@ -1057,15 +1056,28 @@ static void single_shot_timer_handler_mode_switch(void * p_context)
 			}
 			break;
 		case 2:
-				if(mode_button=='u'){
-					//Send mode command 1
-					send_mode_cmd(mode_command_1, sizeof(mode_command_1));
-					query_mode();
-				}
-				if(mode_button=='d'){
-					//Send mode command 3
-					send_mode_cmd(mode_command_3, sizeof(mode_command_3));
-					query_mode();
+				if(left_side_or_right_side){
+					if(mode_button=='u'){
+						//Send mode command 1
+						send_mode_cmd(mode_command_1, sizeof(mode_command_1));
+						query_mode();
+					}
+					if(mode_button=='d'){
+						//Send mode command 3
+						send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+						query_mode();
+					}
+				}else{
+					if(mode_button=='d'){
+						//Send mode command 1
+						send_mode_cmd(mode_command_1, sizeof(mode_command_1));
+						query_mode();
+					}
+					if(mode_button=='u'){
+						//Send mode command 3
+						send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+						query_mode();
+					}
 				}
 			break;
 		case 3:

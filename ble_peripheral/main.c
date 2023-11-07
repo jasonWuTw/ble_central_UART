@@ -702,7 +702,16 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected");
-            printf(" Connected.");
+            //printf(" Connected.");
+            //get remote MAC address
+            printf("Connected to device with MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                   p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[0],
+                   p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[1],
+                   p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[2],
+                   p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[3],
+                   p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[4],
+                   p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[5]);
+				
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -1148,23 +1157,33 @@ int main(void)
     conn_params_init();
 
     // Start execution.
-    printf("UART started.");
+    //printf("\r\nUART started.\r\n");
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 		
-		//Timer
-		create_timers();
-		if(!is_GATT_EVT_ATT_MTU_UPDATED_once){				
-			uint32_t err_code;
-			if(isPairing){
-					err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL); 
-			}else{
-					err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms_fast), NULL); 
-			}
-			APP_ERROR_CHECK(err_code);
-		}
+    //get local MAC address
+    ble_gap_addr_t addr;
+    uint32_t err_code = sd_ble_gap_addr_get(&addr);
+    if (err_code == NRF_SUCCESS)
+    {
+        printf("My MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                        addr.addr[0], addr.addr[1], addr.addr[2],
+                        addr.addr[3], addr.addr[4], addr.addr[5]);
+    }
+	
+    //Timer
+    create_timers();
+    if(!is_GATT_EVT_ATT_MTU_UPDATED_once){				
+        uint32_t err_code;
+        if(isPairing){
+                err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL); 
+        }else{
+                err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms_fast), NULL); 
+        }
+        APP_ERROR_CHECK(err_code);
+    }
     
-		// Enter main loop.
+    // Enter main loop.
     for (;;)
     {
         //Enter System-on idle mode

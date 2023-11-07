@@ -702,6 +702,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected");
+            printf(" Connected.");
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -711,6 +712,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected");
+            printf("Disconnected.");
             // LED indication will be changed when advertising starts.
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
 						
@@ -1146,7 +1148,7 @@ int main(void)
     conn_params_init();
 
     // Start execution.
-    printf("\r\nUART started.\r\n");
+    printf("UART started.");
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 		

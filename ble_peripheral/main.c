@@ -49,7 +49,7 @@
 
 #define APP_BLE_CONN_CFG_TAG            1                                           /**< A tag identifying the SoftDevice BLE configuration. */
 
-#define DEVICE_NAME                     "Matsutek"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Matsutek_E-Bike"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_BLE_OBSERVER_PRIO           3                                           /**< Application's BLE observer priority. You shouldn't need to modify this value. */
@@ -130,11 +130,12 @@ static int timeout_ble_connected = 0; //timer
 static int query_mode_before_mode_switch = 50;//million second(ms)
 static int query_mode_after_ble_connected = 500;//million second(ms)
 static int ble_led_blink_ms = 1000;//million second(ms)
-//static int ble_led_blink_fast_ms = 200;//million second(ms)
+static int ble_led_blink_ms_fast = 100;//million second(ms)
 static bool is_GATT_EVT_ATT_MTU_UPDATED_once = false;
+static bool isPairing = false;
 
 //mode up / down
-static bool left_side_or_right_side = true;
+static bool left_side_or_right_side = false;
 static int mode_status = 0;					//1,2,3,0(0:unknown)
 static char mode_button =' '; //' '  'u'  'd'
 
@@ -178,7 +179,11 @@ static void turn_on_BLE_LED(void) {
 static void blink_BLE_LED(void) {
 	//nrf_gpio_pin_set(BLE_LED);
 	uint32_t err_code;
-	err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL);
+	if(isPairing){
+		err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL);
+	}else{
+		err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms_fast), NULL);
+	}
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -263,16 +268,28 @@ void mode_timer_enabled(void) {
  * @brief Interrupt handler for button click
  */
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
-{  
-  if (pin == MODE_UP){
-    mode_button='u';
-    send_mode_cmd(mode_query, sizeof(mode_query));
-    mode_timer_enabled();
-  } else if (pin == MODE_DOWN) {	
-    mode_button='d';
-    send_mode_cmd(mode_query, sizeof(mode_query));
-    mode_timer_enabled();
-  }
+{
+	if(left_side_or_right_side){  
+		if (pin == MODE_UP){
+			mode_button='u';
+			send_mode_cmd(mode_query, sizeof(mode_query));
+			mode_timer_enabled();
+		} else if (pin == MODE_DOWN) {	
+			mode_button='d';
+			send_mode_cmd(mode_query, sizeof(mode_query));
+			mode_timer_enabled();
+		}
+	}else{
+		if (pin == MODE_UP){
+			mode_button='d';
+			send_mode_cmd(mode_query, sizeof(mode_query));
+			mode_timer_enabled();
+		} else if (pin == MODE_DOWN) {	
+			mode_button='u';
+			send_mode_cmd(mode_query, sizeof(mode_query));
+			mode_timer_enabled();
+		}
+	}
 }
 
 /**
@@ -1056,29 +1073,16 @@ static void single_shot_timer_handler_mode_switch(void * p_context)
 			}
 			break;
 		case 2:
-				if(left_side_or_right_side){
-					if(mode_button=='u'){
-						//Send mode command 1
-						send_mode_cmd(mode_command_1, sizeof(mode_command_1));
-						query_mode();
-					}
-					if(mode_button=='d'){
-						//Send mode command 3
-						send_mode_cmd(mode_command_3, sizeof(mode_command_3));
-						query_mode();
-					}
-				}else{
-					if(mode_button=='d'){
-						//Send mode command 1
-						send_mode_cmd(mode_command_1, sizeof(mode_command_1));
-						query_mode();
-					}
-					if(mode_button=='u'){
-						//Send mode command 3
-						send_mode_cmd(mode_command_3, sizeof(mode_command_3));
-						query_mode();
-					}
-				}
+			if(mode_button=='u'){
+				//Send mode command 1
+				send_mode_cmd(mode_command_1, sizeof(mode_command_1));
+				query_mode();
+			}
+			if(mode_button=='d'){
+				//Send mode command 3
+				send_mode_cmd(mode_command_3, sizeof(mode_command_3));
+				query_mode();
+			}
 			break;
 		case 3:
 			if(mode_button=='u'){
@@ -1150,7 +1154,11 @@ int main(void)
 		create_timers();
 		if(!is_GATT_EVT_ATT_MTU_UPDATED_once){				
 			uint32_t err_code;
-			err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL); 
+			if(isPairing){
+					err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL); 
+			}else{
+					err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms_fast), NULL); 
+			}
 			APP_ERROR_CHECK(err_code);
 		}
     

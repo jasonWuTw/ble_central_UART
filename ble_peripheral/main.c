@@ -106,6 +106,7 @@ const nrf_drv_timer_t TIMER_4 = NRF_DRV_TIMER_INSTANCE(4);
 APP_TIMER_DEF(m_repeated_timer_id_ble_led_blink);
 APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to mode switch. */
 APP_TIMER_DEF(m_single_shot_timer_id_ble_connected_query_mode);  /**< Handler for single shot timer used to query mode status after BLE connected. */
+APP_TIMER_DEF(m_single_shot_timer_id_power_off);  
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
@@ -1074,6 +1075,13 @@ static void single_shot_timer_handler_ble_connected_query_mode(void * p_context)
 	query_mode();
 }
 
+static void single_shot_timer_handler_power_off(void * p_context)
+{
+    printf("\r\n single_shot_timer_handler_power_off \r\n");
+    NRF_LOG_INFO("single_shot_timer_handler_power_off");
+	nrf_gpio_cfg_input(MCU_POWER_HOLD, GPIO_PIN_CNF_PULL_Pulldown);
+}
+
 static void single_shot_timer_handler_mode_switch(void * p_context)
 {
 /*	NRF_LOG_INFO("mode_status:%d",mode_status);
@@ -1134,6 +1142,9 @@ static void create_timers()
                                 APP_TIMER_MODE_REPEATED,
                                 single_shot_timer_handler_ble_led_blink);
 	
+	err_code = app_timer_create(&m_single_shot_timer_id_power_off,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                single_shot_timer_handler_power_off);
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -1178,6 +1189,7 @@ int main(void)
 	
     //Timer
     create_timers();
+		//m_repeated_timer_id_ble_led_blink
     if(!is_GATT_EVT_ATT_MTU_UPDATED_once){				
         uint32_t err_code;
         if(isPairing){
@@ -1187,6 +1199,10 @@ int main(void)
         }
         APP_ERROR_CHECK(err_code);
     }
+		
+    //test : m_single_shot_timer_id_power_off
+    timeout_ble_connected += query_mode_after_ble_connected;
+    err_code = app_timer_start(m_single_shot_timer_id_power_off, APP_TIMER_TICKS(1000*30), NULL);
     
     // Enter main loop.
     for (;;)

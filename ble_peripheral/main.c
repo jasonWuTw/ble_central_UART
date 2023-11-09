@@ -694,6 +694,27 @@ static void query_mode(void){
 	send_mode_cmd(mode_query, sizeof(mode_query));
 }
 
+static bool is_ble_while_list(ble_evt_t const * p_ble_evt){
+	if(p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[0]!= 0x5C){
+		return false;
+	}
+	if(p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[1]!= 0x32){
+		return false;
+	}
+	if(p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[2]!= 0x5E){
+		return false;
+	}
+	if(p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[3]!= 0x52){
+		return false;
+	}
+	if(p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[4]!= 0x3B){
+		return false;
+	}
+	if(p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[5]!= 0xE6){
+		return false;
+	}
+	return true;
+}
 /**@brief Function for handling BLE events.
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
@@ -722,6 +743,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
+				
+            //check white list
+            if(! is_ble_while_list(p_ble_evt)){
+                // Disconnected
+                uint32_t err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                APP_ERROR_CHECK(err_code);
+            }
             break;
 
         case BLE_GAP_EVT_DISCONNECTED:

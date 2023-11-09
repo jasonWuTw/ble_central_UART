@@ -680,6 +680,8 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
         case BLE_ADV_EVT_IDLE:
             NRF_LOG_INFO("BLE_ADV_EVT_IDLE");
             printf("\r\n BLE_ADV_EVT_IDLE \r\n");
+            err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST); 
+            APP_ERROR_CHECK(err_code);
             //sleep_mode_enter();
             break;
         default:
@@ -849,6 +851,8 @@ void bsp_event_handler(bsp_event_t event)
         case BSP_EVENT_SLEEP:
             NRF_LOG_INFO("BSP_EVENT_SLEEP");
             printf("\r\n BSP_EVENT_SLEEP \r\n");
+            err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST); 
+            APP_ERROR_CHECK(err_code);
             //sleep_mode_enter();
             break;
 

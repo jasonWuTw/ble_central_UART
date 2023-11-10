@@ -1242,7 +1242,7 @@ int main(void)
     uint32_t pg_size; 
     uint32_t pg_num; 
 
-    patwr [0]=888;
+    patwr [0]=555;
     patwr [1]=222; 
     patwr [2]=333; 
 
@@ -1253,7 +1253,6 @@ int main(void)
 	
     // ??Flash??
     sd_flash_page_erase(pg_num);
-
     nrf_delay_ms(1000);
     // ????
     sd_flash_write((uint32_t*)addr_data, patwr, 3);
@@ -1262,9 +1261,19 @@ int main(void)
     // Read from ?Flash????
     uint32_t* p_data = (uint32_t*)addr_data; // ????????????
     uint32_t data_read = *p_data; // ????????
-
     NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read);
 
+
+    nrf_delay_ms(1000);
+		patwr [0]=999;
+    sd_flash_page_erase(pg_num);
+    nrf_delay_ms(1000);
+    sd_flash_write((uint32_t*)addr_data, patwr, 3);
+    nrf_delay_ms(1000);
+    // Read from ?Flash????
+    uint32_t* p_data_2 = (uint32_t*)addr_data; // ????????????
+    uint32_t data_read_2 = *p_data_2; // ????????
+    NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_2);
 	
     // Enter main loop.
     for (;;)

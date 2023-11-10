@@ -1236,6 +1236,36 @@ int main(void)
     timeout_ble_connected += query_mode_after_ble_connected;
     err_code = app_timer_start(m_single_shot_timer_id_power_off, APP_TIMER_TICKS(1000*30), NULL);
     
+    /* FLASH */
+    uint32_t addr_data; 
+    uint32_t patwr [3]; 
+    uint32_t pg_size; 
+    uint32_t pg_num; 
+
+    patwr [0]=888;
+    patwr [1]=222; 
+    patwr [2]=333; 
+
+    pg_size = NRF_FICR->CODEPAGESIZE; 
+    pg_num = NRF_FICR->CODESIZE - 1; // ??????Flash
+		
+    addr_data = (pg_size * pg_num); //
+	
+    // ??Flash??
+    sd_flash_page_erase(pg_num);
+
+    nrf_delay_ms(1000);
+    // ????
+    sd_flash_write((uint32_t*)addr_data, patwr, 3);
+		
+    nrf_delay_ms(1000);
+    // Read from ?Flash????
+    uint32_t* p_data = (uint32_t*)addr_data; // ????????????
+    uint32_t data_read = *p_data; // ????????
+
+    NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read);
+
+	
     // Enter main loop.
     for (;;)
     {

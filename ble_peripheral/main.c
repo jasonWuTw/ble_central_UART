@@ -1242,38 +1242,59 @@ int main(void)
     uint32_t pg_size; 
     uint32_t pg_num; 
 
-    patwr [0]=555;
-    patwr [1]=222; 
+    patwr [0]=222;
+    patwr [1]=555; 
     patwr [2]=333; 
 
     pg_size = NRF_FICR->CODEPAGESIZE; 
     pg_num = NRF_FICR->CODESIZE - 1; // ??????Flash
 		
     addr_data = (pg_size * pg_num); //
-	
-    // ??Flash??
+	/*
+    //erase
     sd_flash_page_erase(pg_num);
-    nrf_delay_ms(1000);
-    // ????
+    nrf_delay_ms(200);
+    // write
     sd_flash_write((uint32_t*)addr_data, patwr, 3);
-		
-    nrf_delay_ms(1000);
+*/
+
+/*
     // Read from ?Flash????
+    nrf_delay_ms(200);
     uint32_t* p_data = (uint32_t*)addr_data; // ????????????
     uint32_t data_read = *p_data; // ????????
     NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read);
+*/
 
+    // Read  
+    nrf_delay_ms(200);
+    uint32_t* p_data = (uint32_t*)addr_data;  
+    for(int i = 0; i < 3; i++) {
+		uint32_t data_read = p_data[i];  
+		NRF_LOG_INFO("Data at index %d: %u", i, data_read);
+    }
 
-    nrf_delay_ms(1000);
-		patwr [0]=999;
+    //erase
+    nrf_delay_ms(200);
+    patwr [0]=777;
     sd_flash_page_erase(pg_num);
-    nrf_delay_ms(1000);
-    sd_flash_write((uint32_t*)addr_data, patwr, 3);
-    nrf_delay_ms(1000);
+				
     // Read from ?Flash????
+    nrf_delay_ms(200);
     uint32_t* p_data_2 = (uint32_t*)addr_data; // ????????????
     uint32_t data_read_2 = *p_data_2; // ????????
     NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_2);
+		
+		//write
+    nrf_delay_ms(200);
+    sd_flash_write((uint32_t*)addr_data, patwr, 3);
+		
+    // Read from ?Flash????
+    nrf_delay_ms(200);
+    uint32_t* p_data_3 = (uint32_t*)addr_data; // ????????????
+    uint32_t data_read_3 = *p_data_3; // ????????
+    NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_3);
+	
 	
     // Enter main loop.
     for (;;)

@@ -341,8 +341,8 @@ static void gpio_init(void)
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
     nrf_drv_gpiote_in_event_enable(MODE_DOWN, true); 
 		
-		//POWER_ON ***會不能開機
-    /*in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
+    //POWER_ON ***會不能開機
+/*    in_config.pull = NRF_GPIO_PIN_PULLDOWN;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
     err_code = nrf_drv_gpiote_in_init(POWER_ON, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
     nrf_drv_gpiote_in_event_enable(POWER_ON, true); */

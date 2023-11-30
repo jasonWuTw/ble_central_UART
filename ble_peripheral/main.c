@@ -72,6 +72,7 @@
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
 
 /** gwell test zone*/
+/*
 #define BLE_LED 6	// P0.17
 
 #define MODE_LED1 17 // P0.06
@@ -81,10 +82,11 @@
 #define RM_LED1 22
 #define RM_LED2 23
 #define RM_LED3 24
+*/
 /** gwell test zone*/
 
 /** production zone*/
-/*
+
 #define MODE_LED1 24
 #define MODE_LED2 23
 #define MODE_LED3 22
@@ -92,7 +94,7 @@
 #define RM_LED1 6
 #define RM_LED2 7
 #define RM_LED3 8
-*/
+
 /** production zone*/
 
 #define MCU_POWER_HOLD 2	//PO.02
@@ -198,7 +200,7 @@ static void led_blink(void) {
 		nrf_gpio_pin_toggle(MODE_LED1);
 		nrf_gpio_pin_toggle(MODE_LED2);
 		nrf_gpio_pin_toggle(MODE_LED3);
-		nrf_delay_ms(50);
+		nrf_delay_ms(500);
 	}
 }
 

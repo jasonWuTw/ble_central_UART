@@ -136,6 +136,7 @@ static int ble_led_blink_ms = 1000;//million second(ms)
 static int ble_led_blink_ms_fast = 100;//million second(ms)
 static bool is_GATT_EVT_ATT_MTU_UPDATED_once = false;
 static bool isPairing = false;
+static int seconds_of_inactivity_before_going_to_sleep=3*60;	//second
 
 //mode up / down
 static bool left_side_or_right_side = false;
@@ -272,6 +273,19 @@ void mode_timer_enabled(void) {
  */
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
+//	if (pin == MODE_UP || pin == MODE_DOWN || pin == POWER_ON ){
+	if (pin == MODE_UP || pin == MODE_DOWN ){
+		//m_single_shot_timer_id_power_off
+		uint32_t err_code;	
+		// timer stop
+		err_code = app_timer_stop(m_single_shot_timer_id_power_off);
+		APP_ERROR_CHECK(err_code);
+		// timer start
+		timeout_ble_connected += query_mode_after_ble_connected;
+		err_code = app_timer_start(m_single_shot_timer_id_power_off, APP_TIMER_TICKS(1000*seconds_of_inactivity_before_going_to_sleep), NULL);
+		APP_ERROR_CHECK(err_code);
+	}
+	
 	if(left_side_or_right_side){  
 		if (pin == MODE_UP){
 			mode_button='u';
@@ -326,6 +340,12 @@ static void gpio_init(void)
     err_code = nrf_drv_gpiote_in_init(MODE_DOWN, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
     APP_ERROR_CHECK(err_code);                                                          //Check potential error
     nrf_drv_gpiote_in_event_enable(MODE_DOWN, true); 
+		
+		//POWER_ON ***會不能開機
+    /*in_config.pull = NRF_GPIO_PIN_PULLUP;                                            //Configure pullup for input pin to prevent it from floting. Pin is pulled down when button is pressed on nRF5x-DK boards, see figure two in http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52/dita/nrf52/development/dev_kit_v1.1.0/hw_btns_leds.html?cp=2_0_0_1_4		
+    err_code = nrf_drv_gpiote_in_init(POWER_ON, &in_config, in_pin_handler);   //Initialize the pin with interrupt handler in_pin_handler
+    APP_ERROR_CHECK(err_code);                                                          //Check potential error
+    nrf_drv_gpiote_in_event_enable(POWER_ON, true); */
 		
 	//other
     nrf_gpio_cfg_output(RM_LED1);  
@@ -1114,6 +1134,8 @@ static void single_shot_timer_handler_power_off(void * p_context)
     printf("\r\n single_shot_timer_handler_power_off \r\n");
     NRF_LOG_INFO("single_shot_timer_handler_power_off");
 	nrf_gpio_cfg_input(MCU_POWER_HOLD, GPIO_PIN_CNF_PULL_Pulldown);
+	 // nRF52832 關機,省電
+    NVIC_SystemReset();
 }
 
 static void single_shot_timer_handler_mode_switch(void * p_context)
@@ -1234,9 +1256,9 @@ int main(void)
         APP_ERROR_CHECK(err_code);
     }
 		
-    //test : m_single_shot_timer_id_power_off
+    //m_single_shot_timer_id_power_off
     timeout_ble_connected += query_mode_after_ble_connected;
-    err_code = app_timer_start(m_single_shot_timer_id_power_off, APP_TIMER_TICKS(1000*30), NULL);
+    err_code = app_timer_start(m_single_shot_timer_id_power_off, APP_TIMER_TICKS(1000*seconds_of_inactivity_before_going_to_sleep), NULL);
     
     /* FLASH */
     uint32_t addr_data; 

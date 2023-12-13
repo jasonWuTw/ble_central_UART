@@ -236,10 +236,10 @@ static void switch_mode_led(uint32_t led_pin){
 	memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
 	received_ble_data_length -= 5;
 }*/
-static void received_ble_data_array_handle(uint8_t *dst, uint8_t *src, uint8_t len) {
+static void received_ble_data_array_handle(uint8_t *dst, uint8_t *src, uint8_t len, uint8_t x) {
 	//NRF_LOG_INFO("received_ble_data_array_handle");
     memmove(dst, src, len);
-	received_ble_data_length -= 5;
+	received_ble_data_length -= x;
 }
 /**
  * Function to send a mode command over BLE NUS 
@@ -532,40 +532,40 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
             }
         }
 				
-				//NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
+        //NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
         //NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
         handle_received_nus_data(p_evt);
-        //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
-        //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+        NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+        NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
         if(received_ble_data_length>4){
             do {
                 switch ( is_equal_command(received_ble_data_array) )
                 {
                     case '1':
                         //NRF_LOG_INFO("is_equal_command : 1");
-												mode_status = 1;
-                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+                        mode_status = 1;
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5,5);
                         switch_mode_led(MODE_LED1);
                         break;
                     case '2':
                         //NRF_LOG_INFO("is_equal_command : 2");
-												mode_status = 2;
-                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+                        mode_status = 2;
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5,5);
                         switch_mode_led(MODE_LED2);	
                         break;
                     case '3':
                         //NRF_LOG_INFO("is_equal_command : 3");
-												mode_status = 3;
-                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+                        mode_status = 3;
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5,5);
                         switch_mode_led(MODE_LED3);		
                         break;
                     case 'm': //mode_command_1 or mode_command_2 or mode_command_3 
                         //NRF_LOG_INFO("is_equal_command : m");
-                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5,5);
                         break;
                     default:
                         //NRF_LOG_INFO("is_equal_command : false");
-                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1,1);
                         //memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
                         //received_ble_data_length -= 1;			
                     }
@@ -1327,10 +1327,10 @@ int main(void)
 
 
     nrf_delay_ms(2200);
-    NRF_LOG_INFO("電量查詢............");
+    // NRF_LOG_INFO("電量查詢............");
 	//test 電量查詢
 	send_mode_cmd(power_query, sizeof(power_query));
-    NRF_LOG_INFO("................電量查詢............");
+    // NRF_LOG_INFO("................電量查詢............");
 
 
 

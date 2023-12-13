@@ -112,12 +112,16 @@ APP_TIMER_DEF(m_single_shot_timer_id_power_off);
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
-static uint8_t mode_command_2[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
-static uint8_t mode_command_3[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+static uint8_t mode_command_2[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+static uint8_t mode_command_3[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x05,(char)0x05}; 
 static uint8_t mode_query[] =  {(char)0x66,(char)0x00,(char)0x00,(char)0x00,(char)0x00}; 
 static uint8_t query_response_mode_command_1[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
-static uint8_t query_response_mode_command_2[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x02,(char)0x02}; 
-static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+static uint8_t query_response_mode_command_2[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x03,(char)0x03}; 
+static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)0x00,(char)0x05,(char)0x05}; 
+
+//battery power 電量
+static uint8_t power_query[] =  {(char)0x80,(char)0x01,(char)0x1f,(char)0x00,(char)0x1e};  //80 01 1f 00 1e
+static uint8_t power_query_response_prefix_four[] =  {(char)0x80,(char)0x01,(char)0x1f,(char)0x00};  //80 01 1f 00 前四碼
 
 //static bool usingRX_TX_for_debug = false; // is using RX and TX
 static bool usingRX_TX_for_debug = true; // is using RX and TX
@@ -1309,7 +1313,7 @@ int main(void)
     uint32_t data_read_2 = *p_data_2; // ????????
     NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_2);
 		
-		//write
+    //write
     nrf_delay_ms(200);
     sd_flash_write((uint32_t*)addr_data, patwr, 3);
 		
@@ -1320,6 +1324,16 @@ int main(void)
     NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_3);
 	
 	
+
+
+    nrf_delay_ms(2200);
+    NRF_LOG_INFO("電量查詢............");
+	//test 電量查詢
+	send_mode_cmd(power_query, sizeof(power_query));
+    NRF_LOG_INFO("................電量查詢............");
+
+
+
     // Enter main loop.
     for (;;)
     {

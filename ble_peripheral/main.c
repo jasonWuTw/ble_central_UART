@@ -107,6 +107,7 @@
 const nrf_drv_timer_t TIMER_4 = NRF_DRV_TIMER_INSTANCE(4);
 APP_TIMER_DEF(m_repeated_timer_id_ble_led_blink);
 APP_TIMER_DEF(m_repeated_timer_id_low_power_led_blink);
+APP_TIMER_DEF(m_repeated_timer_id_query_power);
 APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to mode switch. */
 APP_TIMER_DEF(m_single_shot_timer_id_ble_connected_query_mode);  /**< Handler for single shot timer used to query mode status after BLE connected. */
 APP_TIMER_DEF(m_single_shot_timer_id_power_off);  
@@ -141,7 +142,8 @@ static int ble_led_blink_ms = 1000;//million second(ms)
 static int ble_led_blink_ms_fast = 100;//million second(ms)
 static bool is_GATT_EVT_ATT_MTU_UPDATED_once = false;
 static bool isPairing = false;
-static int seconds_of_inactivity_before_going_to_sleep=3*60;	//second
+static int seconds_query_power=5;	//second
+static int seconds_of_inactivity_before_going_to_sleep=5*60;	//second
 
 //mode up / down
 static bool left_side_or_right_side = false;
@@ -300,7 +302,6 @@ void mode_timer_enabled(void) {
  */
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-//	if (pin == MODE_UP || pin == MODE_DOWN || pin == POWER_ON ){
 	if (pin == MODE_UP || pin == MODE_DOWN ){
 		//m_single_shot_timer_id_power_off
 		uint32_t err_code;	
@@ -749,9 +750,12 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
-static void query_mode(void){
-	//nrf_delay_ms(query_mode_before_mode_switch);		
+static void query_mode(void){	
 	send_mode_cmd(mode_query, sizeof(mode_query));
+}
+
+static void query_power(void){	
+	send_mode_cmd(power_query, sizeof(power_query));
 }
 
 static bool is_ble_while_list(ble_evt_t const * p_ble_evt){
@@ -1156,12 +1160,12 @@ static void advertising_start(void)
 
 /**@brief Timeout handler for the repeated timer.
  */
-static void single_shot_timer_handler_ble_led_blink(void * p_context)
+static void repeated_timer_handler_ble_led_blink(void * p_context)
 {
 	nrf_gpio_pin_toggle(BLE_LED);
 }
 
-static void single_shot_timer_handler_low_power_led_blink(void * p_context)
+static void repeated_timer_handler_low_power_led_blink(void * p_context)
 {
 	nrf_gpio_pin_toggle(RM_LED1);
 }
@@ -1169,6 +1173,13 @@ static void single_shot_timer_handler_low_power_led_blink(void * p_context)
 static void single_shot_timer_handler_ble_connected_query_mode(void * p_context)
 {
 	query_mode();
+}
+
+static void repeated_timer_handler_query_power(void * p_context)
+{
+    printf("\r\n query_power \r\n");
+    NRF_LOG_INFO("query_power");
+	query_power();
 }
 
 static void single_shot_timer_handler_power_off(void * p_context)
@@ -1225,9 +1236,6 @@ static void create_timers()
 {
 	ret_code_t err_code;
 	// Create timers
-/*    err_code = app_timer_create(&m_repeated_timer_id,
-                                APP_TIMER_MODE_REPEATED,
-                                repeated_timer_handler);*/
 	err_code = app_timer_create(&m_single_shot_timer_id,
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 single_shot_timer_handler_mode_switch);
@@ -1236,17 +1244,21 @@ static void create_timers()
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 single_shot_timer_handler_ble_connected_query_mode);
 	
-	err_code = app_timer_create(&m_repeated_timer_id_ble_led_blink,
-                                APP_TIMER_MODE_REPEATED,
-                                single_shot_timer_handler_ble_led_blink);
-	
 	err_code = app_timer_create(&m_single_shot_timer_id_power_off,
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 single_shot_timer_handler_power_off);
 
 	err_code = app_timer_create(&m_repeated_timer_id_low_power_led_blink,
                                 APP_TIMER_MODE_REPEATED,
-                                single_shot_timer_handler_low_power_led_blink);
+                                repeated_timer_handler_low_power_led_blink);
+	
+	err_code = app_timer_create(&m_repeated_timer_id_ble_led_blink,
+                                APP_TIMER_MODE_REPEATED,
+                                repeated_timer_handler_ble_led_blink);
+	
+	err_code = app_timer_create(&m_repeated_timer_id_query_power,
+                                APP_TIMER_MODE_REPEATED,
+                                repeated_timer_handler_query_power);
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -1375,6 +1387,8 @@ int main(void)
     // NRF_LOG_INFO("................電量查詢............");
 
 
+    err_code = app_timer_start(m_repeated_timer_id_query_power, APP_TIMER_TICKS(seconds_query_power*1000), NULL);
+    APP_ERROR_CHECK(err_code);
 
     // Enter main loop.
     for (;;)

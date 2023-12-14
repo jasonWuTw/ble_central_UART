@@ -106,6 +106,7 @@
 
 const nrf_drv_timer_t TIMER_4 = NRF_DRV_TIMER_INSTANCE(4);
 APP_TIMER_DEF(m_repeated_timer_id_ble_led_blink);
+APP_TIMER_DEF(m_repeated_timer_id_low_power_led_blink);
 APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to mode switch. */
 APP_TIMER_DEF(m_single_shot_timer_id_ble_connected_query_mode);  /**< Handler for single shot timer used to query mode status after BLE connected. */
 APP_TIMER_DEF(m_single_shot_timer_id_power_off);  
@@ -214,11 +215,13 @@ static void led_off_all_mode_led(void) {
     nrf_gpio_pin_set(MODE_LED2); // Turn off LED
     nrf_gpio_pin_set(MODE_LED3); // Turn off LED
 }
+
 static void led_off_all_rm_led(void) {
     nrf_gpio_pin_set(RM_LED1); // Turn off LED
     nrf_gpio_pin_set(RM_LED2); // Turn off LED
     nrf_gpio_pin_set(RM_LED3); // Turn off LED
 }
+
 static void led_off_all(void) {
     //Turn off all LED
     nrf_gpio_pin_set(BLE_LED); // Turn off LED
@@ -228,19 +231,39 @@ static void led_off_all(void) {
 
 static void switch_mode_led(uint32_t led_pin){
 	led_off_all_mode_led();
-	led_off_all_rm_led();
 	nrf_gpio_pin_toggle(led_pin);
 }
-/*static void receive_ble_handle(){
-	NRF_LOG_INFO("is_prefix_equal : true");
-	memmove(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5);
-	received_ble_data_length -= 5;
-}*/
+
+static void power_led(uint32_t percentage){
+	led_off_all_rm_led();
+    uint32_t err_code;
+    err_code = app_timer_stop(m_repeated_timer_id_low_power_led_blink);
+    APP_ERROR_CHECK(err_code);
+    if(percentage>=80){
+        nrf_gpio_pin_toggle(RM_LED1);
+        nrf_gpio_pin_toggle(RM_LED2);
+        nrf_gpio_pin_toggle(RM_LED3);
+    }
+    if(percentage>30 && percentage<80){
+        nrf_gpio_pin_toggle(RM_LED1);
+        nrf_gpio_pin_toggle(RM_LED2);
+    }
+    if(percentage<=30 && percentage>25){
+        nrf_gpio_pin_toggle(RM_LED1);
+    }
+    if(percentage<=25){
+        //blink for low power
+        err_code = app_timer_start(m_repeated_timer_id_low_power_led_blink, APP_TIMER_TICKS(ble_led_blink_ms_fast), NULL);
+        APP_ERROR_CHECK(err_code);
+    }
+}
+
 static void received_ble_data_array_handle(uint8_t *dst, uint8_t *src, uint8_t len, uint8_t x) {
 	//NRF_LOG_INFO("received_ble_data_array_handle");
     memmove(dst, src, len);
 	received_ble_data_length -= x;
 }
+
 /**
  * Function to send a mode command over BLE NUS 
  */
@@ -454,6 +477,13 @@ bool is_prefix_equal(uint8_t* arr1, uint8_t* arr2) {
  * @return `'1'` if the array is equal to `mode_command_1`, `'2'` if the array is equal to `mode_command_2`, or `' '` otherwise.
  */
 char is_equal_command( uint8_t* received_ble_data_array) {
+	if(is_prefix_equal(power_query_response_prefix_four,received_ble_data_array)
+    && received_ble_data_length == 10){
+        NRF_LOG_INFO("power:%d",received_ble_data_array[4]);
+        NRF_LOG_INFO("power:0x%x",received_ble_data_array[4]);
+        power_led(received_ble_data_array[4]);
+        return 'p'; 
+	}
 	if(is_prefix_equal(mode_command_1,received_ble_data_array)){
       return 'm'; 
 	}
@@ -535,13 +565,13 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
         //NRF_LOG_INFO("Received data from BLE NUS. Writing data on UART.");
         //NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
         handle_received_nus_data(p_evt);
-        NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
-        NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+        // NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
+        // NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
         if(received_ble_data_length>4){
-            do {
+            //do {
                 switch ( is_equal_command(received_ble_data_array) )
                 {
-                    case '1':
+                    case '1'://query moode結果為1
                         //NRF_LOG_INFO("is_equal_command : 1");
                         mode_status = 1;
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5,5);
@@ -559,21 +589,25 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5,5);
                         switch_mode_led(MODE_LED3);		
                         break;
-                    case 'm': //mode_command_1 or mode_command_2 or mode_command_3 
+                    case 'm': //click up/down button.從received_ble_data_array刪掉,不用處理.
                         //NRF_LOG_INFO("is_equal_command : m");
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[5], received_ble_data_length - 5,5);
                         break;
+                    case 'p': //電量
+                        //NRF_LOG_INFO("is_equal_command : m");
+                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[10], received_ble_data_length - 10,10);
+                        break;
                     default:
-                        //NRF_LOG_INFO("is_equal_command : false");
-                        received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1,1);
-                        //memmove(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1);
-                        //received_ble_data_length -= 1;			
+                        // NRF_LOG_INFO("is_equal_command : false");
+                        if(received_ble_data_length>10){
+                            received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1,1);
+                        }
                     }
-                    //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
-                    //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
-                } while (received_ble_data_length > 4);
-                //NRF_LOG_INFO("received_ble_data_length:%d",received_ble_data_length);
-                //NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+                    // NRF_LOG_INFO("2. received_ble_data_length:%d",received_ble_data_length);
+                    // NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
+                //} while (received_ble_data_length > 4);
+                // NRF_LOG_INFO("3. received_ble_data_length:%d",received_ble_data_length);
+                // NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
             }
     }
 }
@@ -1124,8 +1158,12 @@ static void advertising_start(void)
  */
 static void single_shot_timer_handler_ble_led_blink(void * p_context)
 {
-	//NRF_LOG_INFO("single_shot_timer_handler_ble_led_blink............");
 	nrf_gpio_pin_toggle(BLE_LED);
+}
+
+static void single_shot_timer_handler_low_power_led_blink(void * p_context)
+{
+	nrf_gpio_pin_toggle(RM_LED1);
 }
 
 static void single_shot_timer_handler_ble_connected_query_mode(void * p_context)
@@ -1205,6 +1243,10 @@ static void create_timers()
 	err_code = app_timer_create(&m_single_shot_timer_id_power_off,
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 single_shot_timer_handler_power_off);
+
+	err_code = app_timer_create(&m_repeated_timer_id_low_power_led_blink,
+                                APP_TIMER_MODE_REPEATED,
+                                single_shot_timer_handler_low_power_led_blink);
 	APP_ERROR_CHECK(err_code);
 }
 

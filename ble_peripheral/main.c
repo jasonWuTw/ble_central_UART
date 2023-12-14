@@ -124,6 +124,11 @@ static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)
 //battery power 電量
 static uint8_t power_query[] =  {(char)0x80,(char)0x01,(char)0x1f,(char)0x00,(char)0x1e};  //80 01 1f 00 1e
 static uint8_t power_query_response_prefix_four[] =  {(char)0x80,(char)0x01,(char)0x1f,(char)0x00};  //80 01 1f 00 前四碼
+static int seconds_query_power=15;	//second
+static int seconds_of_inactivity_before_going_to_sleep=10*60;	//second
+static int high_power=80;//高電量
+static int low_power=30;//低電量
+static int blink_power=25;//電量燈閃爍
 
 //static bool usingRX_TX_for_debug = false; // is using RX and TX
 static bool usingRX_TX_for_debug = true; // is using RX and TX
@@ -142,8 +147,6 @@ static int ble_led_blink_ms = 1000;//million second(ms)
 static int ble_led_blink_ms_fast = 100;//million second(ms)
 static bool is_GATT_EVT_ATT_MTU_UPDATED_once = false;
 static bool isPairing = false;
-static int seconds_query_power=5;	//second
-static int seconds_of_inactivity_before_going_to_sleep=5*60;	//second
 
 //mode up / down
 static bool left_side_or_right_side = false;
@@ -241,19 +244,19 @@ static void power_led(uint32_t percentage){
     uint32_t err_code;
     err_code = app_timer_stop(m_repeated_timer_id_low_power_led_blink);
     APP_ERROR_CHECK(err_code);
-    if(percentage>=80){
+    if(percentage>=high_power && percentage<=100){
         nrf_gpio_pin_toggle(RM_LED1);
         nrf_gpio_pin_toggle(RM_LED2);
         nrf_gpio_pin_toggle(RM_LED3);
     }
-    if(percentage>30 && percentage<80){
+    if(percentage>low_power && percentage<high_power){
         nrf_gpio_pin_toggle(RM_LED1);
         nrf_gpio_pin_toggle(RM_LED2);
     }
-    if(percentage<=30 && percentage>25){
+    if(percentage<=low_power && percentage>blink_power){
         nrf_gpio_pin_toggle(RM_LED1);
     }
-    if(percentage<=25){
+    if(percentage<=blink_power && percentage>=0){
         //blink for low power
         err_code = app_timer_start(m_repeated_timer_id_low_power_led_blink, APP_TIMER_TICKS(ble_led_blink_ms_fast), NULL);
         APP_ERROR_CHECK(err_code);
@@ -599,10 +602,14 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
                         received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[10], received_ble_data_length - 10,10);
                         break;
                     default:
-                        // NRF_LOG_INFO("is_equal_command : false");
-                        if(received_ble_data_length>10){
-                            received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[1], received_ble_data_length - 1,1);
+                        // 判斷結尾是否有 : 0d 0a ?
+                        if(received_ble_data_length>1){
+                            if(received_ble_data_array[received_ble_data_length-2] == 0x0d 
+                            && received_ble_data_array[received_ble_data_length-1] == 0x0a){
+                                received_ble_data_array_handle(&received_ble_data_array[0], &received_ble_data_array[received_ble_data_length],0, received_ble_data_length );
+                            }
                         }
+                        // NRF_LOG_INFO("case default");
                     }
                     // NRF_LOG_INFO("2. received_ble_data_length:%d",received_ble_data_length);
                     // NRF_LOG_HEXDUMP_INFO(received_ble_data_array, received_ble_data_length);
@@ -810,13 +817,20 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 				
             //check white list
             if(! is_ble_while_list(p_ble_evt)){
-                // Disconnected
+                // 主動斷線
                 uint32_t err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
                 APP_ERROR_CHECK(err_code);
             }
             break;
 
         case BLE_GAP_EVT_DISCONNECTED:
+            //停止低電量閃爍
+		    err_code = app_timer_stop(m_repeated_timer_id_low_power_led_blink);
+            APP_ERROR_CHECK(err_code);
+            //停止電量查詢
+		    err_code = app_timer_stop(m_repeated_timer_id_query_power);
+            APP_ERROR_CHECK(err_code);
+            
             NRF_LOG_INFO("Disconnected");
             printf("Disconnected.");
             // LED indication will be changed when advertising starts.
@@ -908,9 +922,17 @@ void gatt_evt_handler(nrf_ble_gatt_t * p_gatt, nrf_ble_gatt_evt_t const * p_evt)
         is_GATT_EVT_ATT_MTU_UPDATED_once = true;
         ble_query_timer_enabled();
         uint32_t err_code;
-        err_code = app_timer_stop(m_repeated_timer_id_ble_led_blink);  
+        err_code = app_timer_stop(m_repeated_timer_id_ble_led_blink);  //藍芽燈不再閃爍
         APP_ERROR_CHECK(err_code);
-        turn_on_BLE_LED();
+        turn_on_BLE_LED();//藍芽燈打開
+        
+        //電量查詢
+        err_code = app_timer_start(m_repeated_timer_id_query_power, APP_TIMER_TICKS(seconds_query_power*1000), NULL);
+        APP_ERROR_CHECK(err_code);
+        
+        // mode_timer_enabled();
+        nrf_delay_ms(5000);
+        query_mode(); //查詢模式
     }
     NRF_LOG_DEBUG("ATT MTU exchange completed. central 0x%x peripheral 0x%x",
                   p_gatt->att_mtu_desired_central,
@@ -1177,8 +1199,8 @@ static void single_shot_timer_handler_ble_connected_query_mode(void * p_context)
 
 static void repeated_timer_handler_query_power(void * p_context)
 {
-    printf("\r\n query_power \r\n");
-    NRF_LOG_INFO("query_power");
+    // printf("\r\n query_power \r\n");
+    // NRF_LOG_INFO("query_power");
 	query_power();
 }
 
@@ -1379,14 +1401,11 @@ int main(void)
 	
 	
 
-
-    nrf_delay_ms(2200);
-    // NRF_LOG_INFO("電量查詢............");
-	//test 電量查詢
-	send_mode_cmd(power_query, sizeof(power_query));
-    // NRF_LOG_INFO("................電量查詢............");
-
-
+    //開機後,第一次電量查詢
+    nrf_delay_ms(1000);
+    query_power();
+    
+    //每隔多久電量查詢
     err_code = app_timer_start(m_repeated_timer_id_query_power, APP_TIMER_TICKS(seconds_query_power*1000), NULL);
     APP_ERROR_CHECK(err_code);
 

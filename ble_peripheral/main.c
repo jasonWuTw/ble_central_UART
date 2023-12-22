@@ -49,7 +49,7 @@
 
 #define APP_BLE_CONN_CFG_TAG            1                                           /**< A tag identifying the SoftDevice BLE configuration. */
 
-#define DEVICE_NAME                     "Matsutek_E-Bike"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Matsutek_E-Bike-wh"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_BLE_OBSERVER_PRIO           3                                           /**< Application's BLE observer priority. You shouldn't need to modify this value. */
@@ -111,6 +111,7 @@ APP_TIMER_DEF(m_repeated_timer_id_query_power);
 APP_TIMER_DEF(m_single_shot_timer_id);  /**< Handler for single shot timer used to mode switch. */
 APP_TIMER_DEF(m_single_shot_timer_id_ble_connected_query_mode);  /**< Handler for single shot timer used to query mode status after BLE connected. */
 APP_TIMER_DEF(m_single_shot_timer_id_power_off);  
+APP_TIMER_DEF(m_single_shot_timer_id_power_off_step2);  
 
 /* Define the transmission buffer, which is a buffer to hold the data to be sent over UART */
 static uint8_t mode_command_1[] =   {(char)0x67,(char)0x00,(char)0x00,(char)0x01,(char)0x01}; 
@@ -1206,10 +1207,91 @@ static void repeated_timer_handler_query_power(void * p_context)
 
 static void single_shot_timer_handler_power_off(void * p_context)
 {
+    
+    // nrf_delay_ms(2000);
     printf("\r\n single_shot_timer_handler_power_off \r\n");
     NRF_LOG_INFO("single_shot_timer_handler_power_off");
-	nrf_gpio_cfg_input(MCU_POWER_HOLD, GPIO_PIN_CNF_PULL_Pulldown);
-	 // nRF52832 關機,省電
+
+    // nrf_delay_ms(2000);
+    //? ping ??
+	// nrf_gpio_cfg_input(MODE_LED1, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(MODE_LED2, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(MODE_LED3, GPIO_PIN_CNF_PULL_Pulldown);
+    
+	// nrf_gpio_cfg_input(RM_LED1, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(RM_LED2, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(RM_LED3, GPIO_PIN_CNF_PULL_Pulldown);
+    
+	// nrf_gpio_cfg_input(BLE_LED, GPIO_PIN_CNF_PULL_Pulldown);
+
+	// nrf_gpio_cfg_input(MCU_POWER_HOLD, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(POWER_ON, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(MODE_UP, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(MODE_DOWN, GPIO_PIN_CNF_PULL_Pulldown);
+	// nrf_gpio_cfg_input(CELL_V, GPIO_PIN_CNF_PULL_Pulldown);
+
+    // nrf_delay_ms(2000);
+
+    //? ping ??
+	// nrf_gpio_cfg_input(MODE_LED1, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(MODE_LED2, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(MODE_LED3, NRF_GPIO_PIN_PULLUP);
+    
+	// nrf_gpio_cfg_input(RM_LED1, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(RM_LED2, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(RM_LED3, NRF_GPIO_PIN_PULLUP);
+    
+	// nrf_gpio_cfg_input(BLE_LED, NRF_GPIO_PIN_PULLUP);
+
+	// nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(POWER_ON, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(MODE_UP, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(MODE_DOWN, NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_PULLUP);
+    
+    //NRF_GPIO_PIN_NOPULL 
+	nrf_gpio_cfg_input(MODE_LED1, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_LED2, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_LED3, NRF_GPIO_PIN_NOPULL);
+    
+	nrf_gpio_cfg_input(RM_LED1, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(RM_LED2, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(RM_LED3, NRF_GPIO_PIN_NOPULL);
+    
+	nrf_gpio_cfg_input(BLE_LED, NRF_GPIO_PIN_NOPULL);
+
+	nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(POWER_ON, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_UP, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_DOWN, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_NOPULL);
+
+    // nrf_delay_ms(2000);
+    
+    printf("\r\n NRF_GPIO_PIN_PULLUP \r\n");
+    NRF_LOG_INFO("NRF_GPIO_PIN_PULLUP");
+
+    // nrf_delay_ms(2000);
+
+    // nRF52832 ??,??
+    // NVIC_SystemReset();
+    
+    uint32_t err_code;	
+    // timer stop
+    err_code = app_timer_start(m_single_shot_timer_id_power_off_step2, APP_TIMER_TICKS(1000*3), NULL);
+    APP_ERROR_CHECK(err_code);
+}
+
+static void single_shot_timer_handler_power_off_step2(void * p_context)
+{
+    
+    nrf_delay_ms(2000);
+    printf("\r\n single_shot_timer_handler_power_off_step2 \r\n");
+    NRF_LOG_INFO("single_shot_timer_handler_power_off_step2");
+
+    nrf_delay_ms(2000);
+    
+    // nRF52832 ??,??
     NVIC_SystemReset();
 }
 
@@ -1281,6 +1363,11 @@ static void create_timers()
 	err_code = app_timer_create(&m_repeated_timer_id_query_power,
                                 APP_TIMER_MODE_REPEATED,
                                 repeated_timer_handler_query_power);
+	
+	err_code = app_timer_create(&m_single_shot_timer_id_power_off_step2,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                single_shot_timer_handler_power_off_step2);
+
 	APP_ERROR_CHECK(err_code);
 }
 

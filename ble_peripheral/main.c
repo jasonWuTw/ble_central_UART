@@ -126,7 +126,7 @@ static uint8_t query_response_mode_command_3[] =   {(char)0x66,(char)0x00,(char)
 static uint8_t power_query[] =  {(char)0x80,(char)0x01,(char)0x1f,(char)0x00,(char)0x1e};  //80 01 1f 00 1e
 static uint8_t power_query_response_prefix_four[] =  {(char)0x80,(char)0x01,(char)0x1f,(char)0x00};  //80 01 1f 00 前四碼
 static int seconds_query_power=15;	//second
-static int seconds_of_inactivity_before_going_to_sleep=10*60;	//second
+static int seconds_of_inactivity_before_going_to_sleep=3*60;	//second
 static int high_power=80;//高電量
 static int low_power=30;//低電量
 static int blink_power=25;//電量燈閃爍
@@ -1190,22 +1190,22 @@ static void single_shot_timer_handler_power_off(void * p_context)
 	// nrf_gpio_cfg_input(MODE_DOWN, NRF_GPIO_PIN_PULLUP);
 	// nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_PULLUP);
     
-    //NRF_GPIO_PIN_NOPULL 
-	// nrf_gpio_cfg_input(MODE_LED1, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(MODE_LED2, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(MODE_LED3, NRF_GPIO_PIN_NOPULL);
+    //不可刪掉NRF_GPIO_PIN_NOPULL 
+	nrf_gpio_cfg_input(MODE_LED1, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_LED2, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_LED3, NRF_GPIO_PIN_NOPULL);
     
-	// nrf_gpio_cfg_input(RM_LED1, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(RM_LED2, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(RM_LED3, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(RM_LED1, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(RM_LED2, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(RM_LED3, NRF_GPIO_PIN_NOPULL);
     
-	// nrf_gpio_cfg_input(BLE_LED, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(BLE_LED, NRF_GPIO_PIN_NOPULL);
 
-	// nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(POWER_ON, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(MODE_UP, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(MODE_DOWN, NRF_GPIO_PIN_NOPULL);
-	// nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(POWER_ON, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_UP, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(MODE_DOWN, NRF_GPIO_PIN_NOPULL);
+	nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_NOPULL);
 
     // nrf_delay_ms(2000);
     

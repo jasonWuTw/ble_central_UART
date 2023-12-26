@@ -245,7 +245,7 @@ static void power_led(uint32_t percentage){
     uint32_t err_code;
     err_code = app_timer_stop(m_repeated_timer_id_low_power_led_blink);
     APP_ERROR_CHECK(err_code);
-    if(percentage>=high_power && percentage<=100){
+    if(percentage>=high_power){
         nrf_gpio_pin_toggle(RM_LED1);
         nrf_gpio_pin_toggle(RM_LED2);
         nrf_gpio_pin_toggle(RM_LED3);
@@ -257,7 +257,7 @@ static void power_led(uint32_t percentage){
     if(percentage<=low_power && percentage>blink_power){
         nrf_gpio_pin_toggle(RM_LED1);
     }
-    if(percentage<=blink_power && percentage>=0){
+    if(percentage<=blink_power){
         //blink for low power
         err_code = app_timer_start(m_repeated_timer_id_low_power_led_blink, APP_TIMER_TICKS(ble_led_blink_ms_fast), NULL);
         APP_ERROR_CHECK(err_code);
@@ -1067,8 +1067,10 @@ static void uart_init(void)
     uint32_t                     err_code;
     app_uart_comm_params_t const comm_params =
     {
-        .rx_pin_no    = 25,
-        .tx_pin_no    = 26,
+        .rx_pin_no    = RX_PIN_NUMBER,
+        .tx_pin_no    = TX_PIN_NUMBER,
+        // .rx_pin_no    = 25,
+        // .tx_pin_no    = 26,
         .rts_pin_no   = RTS_PIN_NUMBER,
         .cts_pin_no   = CTS_PIN_NUMBER,
         .flow_control = APP_UART_FLOW_CONTROL_DISABLED,

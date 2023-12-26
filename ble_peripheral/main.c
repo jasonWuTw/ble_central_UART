@@ -166,33 +166,11 @@ static ble_uuid_t m_adv_uuids[]          =                                      
     {BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}
 };
 
-/**
- * @brief Handler for timer events.
- */
-/*void timer_4_event_handler(nrf_timer_event_t event_type, void* p_context)
-{
-    switch (event_type)
-    {
-			case NRF_TIMER_EVENT_COMPARE0:
-				NRF_LOG_INFO("NRF_TIMER_EVENT_COMPARE0............."); 
-				//bsp_board_led_invert(led_to_invert);
-				//nrf_gpio_pin_toggle(RM_LED1);
-			break;
-			
-			default:
-				//NRF_LOG_INFO("default............");
-				//Do nothing.
-			break;
-    }
-}*/
-
 static void turn_on_BLE_LED(void) {
-	//NRF_LOG_INFO("turn_on_BLE_LED............");
 	nrf_gpio_pin_clear(BLE_LED);
 }
 
 static void blink_BLE_LED(void) {
-	//nrf_gpio_pin_set(BLE_LED);
 	uint32_t err_code;
 	if(isPairing){
 		err_code = app_timer_start(m_repeated_timer_id_ble_led_blink, APP_TIMER_TICKS(ble_led_blink_ms), NULL);
@@ -265,7 +243,6 @@ static void power_led(uint32_t percentage){
 }
 
 static void received_ble_data_array_handle(uint8_t *dst, uint8_t *src, uint8_t len, uint8_t x) {
-	//NRF_LOG_INFO("received_ble_data_array_handle");
     memmove(dst, src, len);
 	received_ble_data_length -= x;
 }
@@ -287,7 +264,6 @@ static void send_mode_cmd(uint8_t *data, uint16_t length)
 }
 
 void ble_query_timer_enabled(void) {
-	//NRF_LOG_INFO("ble_query_timer_enabled................");
 	uint32_t err_code;
 	timeout_ble_connected += query_mode_after_ble_connected;
 	err_code = app_timer_start(m_single_shot_timer_id_ble_connected_query_mode, APP_TIMER_TICKS(timeout_ble_connected), NULL);
@@ -351,13 +327,6 @@ static void gpio_init(void)
     //Initialize gpiote module
     err_code = nrf_drv_gpiote_init();
     APP_ERROR_CHECK(err_code);
-    
-	//Initialize output pin
-/*    nrf_drv_gpiote_out_config_t out_config = GPIOTE_CONFIG_OUT_SIMPLE(false);        //Configure output button
-    err_code = nrf_drv_gpiote_out_init(RM_LED1, &out_config);                        //Initialize output button
-    APP_ERROR_CHECK(err_code);                                                       //Check potential error
-    nrf_drv_gpiote_out_clear(RM_LED1);                                               //Turn on LED to indicate that nRF5x is not in System-off mode
-*/
 
     nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(false);     //Configure to generate interrupt and wakeup on pin signal low. "false" means that gpiote will use the PORT event, which is low power, i.e. does not add any noticable current consumption (<<1uA). Setting this to "true" will make the gpiote module use GPIOTE->IN events which add ~8uA for nRF52 and ~1mA for nRF51.
 	
@@ -702,34 +671,6 @@ static void conn_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
-/**@brief Function for putting the chip into sleep mode.
- *
- * @note This function will not return.
- */
-static void sleep_mode_enter(void)
-{
-    //uint32_t err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-    //APP_ERROR_CHECK(err_code);
-
-    // Prepare wakeup buttons.
-    //err_code = bsp_btn_ble_sleep_mode_prepare();
-    //APP_ERROR_CHECK(err_code);
-	
-    /* ERROR 8198
-    The chip will enter Emulated System OFF mode if it is in debug interface mode, 
-    and in that case, immediately return 
-    from the sd_power_system_off() call instead of entering sleep. 
-    So you need to make sure 
-    the debug interface is disabled to properly test System OFF mode on your device. 
-    https://devzone.nordicsemi.com/f/nordic-q-a/57224/app-error-8198-at-err_code-sd_power_system_off/232052
-    */
-    // Go to system-off mode (this function will not return; wakeup will cause a reset).
-    //err_code = sd_power_system_off();
-    //APP_ERROR_CHECK(err_code);
-}
-
-
 /**@brief Function for handling advertising events.
  *
  * @details This function will be called for advertising events which are passed to the application.
@@ -751,7 +692,6 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             printf("\r\n BLE_ADV_EVT_IDLE \r\n");
             err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST); 
             APP_ERROR_CHECK(err_code);
-            //sleep_mode_enter();
             break;
         default:
             break;
@@ -800,7 +740,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected");
-            //printf(" Connected.");
+            printf(" Connected.");
             //get remote MAC address
             printf("Connected to device with MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
                    p_ble_evt->evt.gap_evt.params.connected.peer_addr.addr[0],
@@ -935,9 +875,9 @@ void gatt_evt_handler(nrf_ble_gatt_t * p_gatt, nrf_ble_gatt_evt_t const * p_evt)
         nrf_delay_ms(5000);
         query_mode(); //查詢模式
     }
-    NRF_LOG_DEBUG("ATT MTU exchange completed. central 0x%x peripheral 0x%x",
-                  p_gatt->att_mtu_desired_central,
-                  p_gatt->att_mtu_desired_periph);
+    // NRF_LOG_DEBUG("ATT MTU exchange completed. central 0x%x peripheral 0x%x",
+    //               p_gatt->att_mtu_desired_central,
+    //               p_gatt->att_mtu_desired_periph);
 }
 
 
@@ -968,7 +908,6 @@ void bsp_event_handler(bsp_event_t event)
             printf("\r\n BSP_EVENT_SLEEP \r\n");
             err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST); 
             APP_ERROR_CHECK(err_code);
-            //sleep_mode_enter();
             break;
 
         case BSP_EVENT_DISCONNECT:
@@ -1252,26 +1191,26 @@ static void single_shot_timer_handler_power_off(void * p_context)
 	// nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_PULLUP);
     
     //NRF_GPIO_PIN_NOPULL 
-	nrf_gpio_cfg_input(MODE_LED1, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(MODE_LED2, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(MODE_LED3, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(MODE_LED1, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(MODE_LED2, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(MODE_LED3, NRF_GPIO_PIN_NOPULL);
     
-	nrf_gpio_cfg_input(RM_LED1, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(RM_LED2, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(RM_LED3, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(RM_LED1, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(RM_LED2, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(RM_LED3, NRF_GPIO_PIN_NOPULL);
     
-	nrf_gpio_cfg_input(BLE_LED, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(BLE_LED, NRF_GPIO_PIN_NOPULL);
 
-	nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(POWER_ON, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(MODE_UP, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(MODE_DOWN, NRF_GPIO_PIN_NOPULL);
-	nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(MCU_POWER_HOLD, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(POWER_ON, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(MODE_UP, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(MODE_DOWN, NRF_GPIO_PIN_NOPULL);
+	// nrf_gpio_cfg_input(CELL_V, NRF_GPIO_PIN_NOPULL);
 
     // nrf_delay_ms(2000);
     
-    printf("\r\n NRF_GPIO_PIN_PULLUP \r\n");
-    NRF_LOG_INFO("NRF_GPIO_PIN_PULLUP");
+    // printf("\r\n NRF_GPIO_PIN_PULLUP \r\n");
+    // NRF_LOG_INFO("NRF_GPIO_PIN_PULLUP");
 
     // nrf_delay_ms(2000);
 
@@ -1287,11 +1226,11 @@ static void single_shot_timer_handler_power_off(void * p_context)
 static void single_shot_timer_handler_power_off_step2(void * p_context)
 {
     
-    nrf_delay_ms(2000);
-    printf("\r\n single_shot_timer_handler_power_off_step2 \r\n");
-    NRF_LOG_INFO("single_shot_timer_handler_power_off_step2");
+    // nrf_delay_ms(2000);
+    // printf("\r\n single_shot_timer_handler_power_off_step2 \r\n");
+    // NRF_LOG_INFO("single_shot_timer_handler_power_off_step2");
 
-    nrf_delay_ms(2000);
+    // nrf_delay_ms(2000);
     
     // nRF52832 ??,??
     NVIC_SystemReset();
@@ -1430,63 +1369,48 @@ int main(void)
     err_code = app_timer_start(m_single_shot_timer_id_power_off, APP_TIMER_TICKS(1000*seconds_of_inactivity_before_going_to_sleep), NULL);
     
     /* FLASH */
-    uint32_t addr_data; 
-    uint32_t patwr [3]; 
-    uint32_t pg_size; 
-    uint32_t pg_num; 
+    // uint32_t addr_data; 
+    // uint32_t patwr [3]; 
+    // uint32_t pg_size; 
+    // uint32_t pg_num; 
 
-    patwr [0]=222;
-    patwr [1]=555; 
-    patwr [2]=333; 
+    // patwr [0]=222;
+    // patwr [1]=555; 
+    // patwr [2]=333; 
 
-    pg_size = NRF_FICR->CODEPAGESIZE; 
-    pg_num = NRF_FICR->CODESIZE - 1; // ??????Flash
+    // pg_size = NRF_FICR->CODEPAGESIZE; 
+    // pg_num = NRF_FICR->CODESIZE - 1; // ??????Flash
 		
-    addr_data = (pg_size * pg_num); //
-	/*
-    //erase
-    sd_flash_page_erase(pg_num);
-    nrf_delay_ms(200);
-    // write
-    sd_flash_write((uint32_t*)addr_data, patwr, 3);
-*/
+    // addr_data = (pg_size * pg_num); 
 
-/*
-    // Read from ?Flash????
-    nrf_delay_ms(200);
-    uint32_t* p_data = (uint32_t*)addr_data; // ????????????
-    uint32_t data_read = *p_data; // ????????
-    NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read);
-*/
+    // // Read  
+    // nrf_delay_ms(200);
+    // uint32_t* p_data = (uint32_t*)addr_data;  
+    // for(int i = 0; i < 3; i++) {
+	// 	uint32_t data_read = p_data[i];  
+	// 	NRF_LOG_INFO("Data at index %d: %u", i, data_read);
+    // }
 
-    // Read  
-    nrf_delay_ms(200);
-    uint32_t* p_data = (uint32_t*)addr_data;  
-    for(int i = 0; i < 3; i++) {
-		uint32_t data_read = p_data[i];  
-		NRF_LOG_INFO("Data at index %d: %u", i, data_read);
-    }
-
-    //erase
-    nrf_delay_ms(200);
-    patwr [0]=777;
-    sd_flash_page_erase(pg_num);
+    // //erase
+    // nrf_delay_ms(200);
+    // patwr [0]=777;
+    // sd_flash_page_erase(pg_num);
 				
-    // Read from ?Flash????
-    nrf_delay_ms(200);
-    uint32_t* p_data_2 = (uint32_t*)addr_data; // ????????????
-    uint32_t data_read_2 = *p_data_2; // ????????
-    NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_2);
+    // // Read from ?Flash????
+    // nrf_delay_ms(200);
+    // uint32_t* p_data_2 = (uint32_t*)addr_data; // ????????????
+    // uint32_t data_read_2 = *p_data_2; // ????????
+    // NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_2);
 		
-    //write
-    nrf_delay_ms(200);
-    sd_flash_write((uint32_t*)addr_data, patwr, 3);
+    // //write
+    // nrf_delay_ms(200);
+    // sd_flash_write((uint32_t*)addr_data, patwr, 3);
 		
-    // Read from ?Flash????
-    nrf_delay_ms(200);
-    uint32_t* p_data_3 = (uint32_t*)addr_data; // ????????????
-    uint32_t data_read_3 = *p_data_3; // ????????
-    NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_3);
+    // // Read from ?Flash????
+    // nrf_delay_ms(200);
+    // uint32_t* p_data_3 = (uint32_t*)addr_data; // ????????????
+    // uint32_t data_read_3 = *p_data_3; // ????????
+    // NRF_LOG_INFO("Data at address %u: %u", addr_data, data_read_3);
 	
 	
 

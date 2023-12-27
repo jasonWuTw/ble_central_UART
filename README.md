@@ -1,3 +1,5 @@
+# 2023/12/27 改放到GitLab
+
 # ble_central_UART
 ble_central  +  UART
 

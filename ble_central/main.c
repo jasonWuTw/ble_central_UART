@@ -238,19 +238,7 @@ static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_le
     {
         while (app_uart_put('\n') == NRF_ERROR_BUSY);
     }
-    if (ECHOBACK_BLE_UART_DATA)
-    {
-        // Send data back to the peripheral.
-        /*do
-        {
-            ret_val = ble_nus_c_string_send(&m_ble_nus_c, p_data, data_len);
-            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-            {
-                NRF_LOG_ERROR("Failed sending NUS message. Error 0x%x. ", ret_val);
-                APP_ERROR_CHECK(ret_val);
-            }
-        } while (ret_val == NRF_ERROR_BUSY);*/
-    }
+ 
 }
 
 
@@ -273,10 +261,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
             UNUSED_VARIABLE(app_uart_get(&data_array[index]));
             index++;
 
-            /*if ((data_array[index - 1] == '\n') ||
-                (data_array[index - 1] == '\r') ||
-                (index >= (m_ble_nus_max_data_len)))
-            {*/
+
                 NRF_LOG_DEBUG("Ready to send data over BLE NUS");
                 NRF_LOG_HEXDUMP_DEBUG(data_array, index);
 
@@ -290,7 +275,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
                 } while (ret_val == NRF_ERROR_RESOURCES);
 
                 index = 0;
-            //}
+            
             break;
 
         /**@snippet [Handling data from UART] */
